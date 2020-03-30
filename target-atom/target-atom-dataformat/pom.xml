@@ -1,0 +1,116 @@
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.ktds</groupId>
+		<artifactId>target-atom</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>target-atom-dataformat</artifactId>
+	<name>target-atom-dataformat</name>
+	<description>target-atom Common Data Format Library</description>
+	<packaging>jar</packaging>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<spring-version>5.1.6.RELEASE</spring-version>
+		<spring-boot-version>2.1.4.RELEASE</spring-boot-version>
+		<commons-lang-version>3.9</commons-lang-version>
+		<camel-version>2.23.2</camel-version>
+
+		<!-- eclipse plugin need the jaxb in this pom.xml file -->
+		<!-- Make sure to keep JAXB version up to date in parent/pom.xml in the 
+			bottom of the file -->
+		<jaxb-version>2.3.1</jaxb-version>
+		<junit-version>4.12</junit-version>
+		<log4j-version>2.11.1</log4j-version>
+		<commons-beanutils-version>1.9.3</commons-beanutils-version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-bindy</artifactId>
+			<version>${camel-version}</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/javax.xml.bind/jaxb-api -->
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>${jaxb-version}</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.camel/camel-stream -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-stream</artifactId>
+			<version>${camel-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-script</artifactId>
+			<version>${camel-version}</version>
+		</dependency>
+
+		<!-- Camel Bindy Test Dependency -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core-xml</artifactId>
+			<scope>test</scope>
+			<version>${camel-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-test-spring</artifactId>
+			<scope>test</scope>
+			<version>${camel-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-spring-javaconfig</artifactId>
+			<scope>test</scope>
+			<version>${camel-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-spring-boot</artifactId>
+			<scope>test</scope>
+			<version>${camel-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+			<version>${junit-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+			<scope>test</scope>
+			<version>${log4j-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<scope>test</scope>
+			<version>${log4j-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-slf4j-impl</artifactId>
+			<scope>test</scope>
+			<version>${log4j-version}</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/commons-beanutils/commons-beanutils -->
+		<dependency>
+			<groupId>commons-beanutils</groupId>
+			<artifactId>commons-beanutils</artifactId>
+			<version>${commons-beanutils-version}</version>
+		</dependency>
+
+	</dependencies>
+</project>

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: uq-product
+  labels:
+    app: uq-product
+    version: 1.0.0
+    release: uq-product
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: uq-product

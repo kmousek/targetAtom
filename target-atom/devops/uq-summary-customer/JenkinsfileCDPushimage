@@ -1,0 +1,125 @@
+def label = "uq_uq-summary-customer-${UUID.randomUUID().toString()}"
+def serviceAccount = "jenkins-uq"
+def serviceName = "uq-summary-customer"
+
+def notifyStarted() {
+    mattermostSend color: 'good', message: "STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+}
+
+def notifySuccessful(message) {
+    mattermostSend color: 'good', message: "SUCCEED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+def notifyFailed(message) {
+  mattermostSend color: 'danger', message: "FAILED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+String getBranchName(branch) {
+  branchTemp=sh returnStdout:true ,script:"""echo "$branch" |sed -E "s#origin/##g" """
+  if(branchTemp){
+    branchTemp=branchTemp.trim()
+  }
+  return branchTemp
+}
+
+podTemplate(label: label, serviceAccount: serviceAccount,
+	containers: [
+		containerTemplate(name: 'docker', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/docker:stable', ttyEnabled: true, command: 'cat',
+			resourceRequestCpu: "10m", resourceLimitCpu: "100m", resourceRequestMemory: "100Mi", resourceLimitMemory: "300Mi"),
+		containerTemplate(name: 'curl-jq', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/alpine-curl-jq-millet:1.0', command: 'cat', ttyEnabled: true,
+			resourceRequestCpu: "10m", resourceLimitCpu: "10m", resourceRequestMemory: "10Mi",  resourceLimitMemory: "10Mi"),
+		containerTemplate(name: 'jnlp', image: 'ktis-bastion01.container.ipc.kt.com:5000/jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}',
+			resourceRequestCpu: "100m", resourceLimitCpu: "200m", resourceRequestMemory: "500Mi", resourceLimitMemory: "1000Mi")
+	],
+	volumes: [
+	
+	    hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
+        persistentVolumeClaim(mountPath: '/home/jenkins', claimName: 'jenkins-slave-pvc', readOnly: false)
+	    ]
+	) {
+	
+	node(label) {
+		try {
+			//notifyStarted()
+		  
+			def autoCancelled = false			
+			def branchTemp
+			//branch Name Parsing
+			branchTemp = params.branchName
+				
+			branchName=getBranchName(branchTemp)
+
+			def milestone
+			milestone=params.version
+	  
+			//null check 
+			if(!branchName || !milestone){
+				throw new Exception("Value is null")
+			}
+			
+			stage('Get Source') {
+				git url: "http://10.217.59.20/usage-query/usage-query.git",
+					credentialsId: 'git-credentials',
+					branch: "${branchName}"
+			}
+			
+			def props = readProperties  file:'devops/' + serviceName + '/pipelineCDPushimage.properties'
+			def dockerRegistry = props['dockerRegistry']
+			def image = props['image']
+			def prddockerRegistry = props['prddockerRegistry']
+			def prdimage = props['prdimage']
+			def gitProjectUrl = props['gitProjectUrl']
+		  
+			//null check 
+			if(!dockerRegistry || !image || !prddockerRegistry || !prdimage || !gitProjectUrl){
+				throw new Exception("Value is null")
+			}
+			
+			stage('Check Milestone'){
+				container('curl-jq'){
+					withCredentials([string(credentialsId: 'gitlab-secret-token', variable: 'TOKEN')]){		
+						
+						result = sh returnStdout:true, script: """curl --header PRIVATE-TOKEN:$TOKEN ${gitProjectUrl}/milestones?state=active | jq -r '.[].title' | grep ${milestone} | wc -l"""
+						result = result.toInteger()
+						
+						if ( result == 0 ){
+						   autoCancelled = true
+						   error('Error MileStone(version) is not opend')
+						}
+					}
+				}
+			}
+
+		  
+			container('docker') {
+				stage('Get Docker image') {
+					docker.withRegistry("${dockerRegistry}", 'dev-registry-credentials') {
+						sh "docker pull ${image}:${milestone}"
+					}
+				}
+				
+				stage('Push Docker image') {						
+					docker.withRegistry("${prddockerRegistry}", 'registry-credentials') {
+						sh "docker tag ${image}:${milestone} ${prdimage}:${milestone}"
+						sh "docker push ${prdimage}:${milestone}"
+						sh "docker tag ${image}:${milestone} ${prdimage}:latest"
+						sh "docker push ${prdimage}:latest"
+					}
+				}
+			}
+		  
+		 
+			stage('Image Inspection') {
+				sh "echo 'Will be implement / VA || Fortify'"
+			}
+		
+			//notifySuccessful()
+		} catch(e) {
+			buildMessage="**Error :: "+ e.toString()+"**"
+			print "this build cause error:" + buildMessage
+			
+			currentBuild.result = "FAILED"
+			//notifyFailed(buildMessage)
+		}
+	}
+}

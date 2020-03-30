@@ -1,0 +1,505 @@
+//list any import classes here.
+import com.ktds.targetatom.cdr.intcc.INTCCBody;
+import com.ktds.targetatom.cdr.intcc.INTCCErrorCdr;
+import com.ktds.targetatom.cdr.intcc.INTCCResultCdr;
+import com.ktds.targetatom.vo.TbErrMappgBasInfo;
+import com.ktds.targetatom.vo.TbErrMappgBasInfoKey;
+import com.ktds.targetatom.vo.TbFeatrBasInfo;
+import com.ktds.targetatom.util.CommonUtils;
+import java.lang.StringBuilder;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import org.slf4j.Logger;
+import java.util.Date;
+import java.lang.Integer;
+import java.util.ArrayList;
+import java.lang.String;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import com.ktds.targetatom.bean.AuditHandler;
+
+
+
+//declare any global variables here
+global AuditHandler audit;
+
+function String comnDateDiff(String sExDate, String sStDate, String sDateFmt, String sReturnUnit, String sFlag) {
+ 
+    String sDateFmtNew = "";
+    long   lTimeDiff = 0;
+    long   lExMilliSec = 0;
+    long   lStMilliSec = 0;
+    int    iExYear = 0;
+    int    iExMonth = 0;
+    int    iExDay = 0;
+    int    iExHour = 0;
+    int    iExMinute = 0;
+    int    iExSecond = 0;
+    int    iStYear = 0;
+    int    iStMonth = 0;
+    int    iStDay = 0;
+    int    iStHour = 0;
+    int    iStMinute = 0;
+    int    iStSecond = 0;
+    int    iExDate = 19700101, iStDate = 19700101;
+    int    iExTime = 0;
+    int    iExMTime = 0;
+    int    iStTime = 0;
+    int    iStMTime = 0;
+    int    iLength = 0;
+
+    if (sStDate == null || sStDate == "" || sStDate.equals("") || sExDate == null || sExDate == "" || sExDate.equals("") ) return ""; 
+
+    if (sDateFmt == "" || sDateFmt == null || sDateFmt.equals("") ) sDateFmt = "yyyymmdd"; 
+    //else sDateFmt = strToLower (sDateFmt);
+    else sDateFmt = sDateFmt.toLowerCase();
+
+    if (sReturnUnit == "" || sReturnUnit == null || sReturnUnit.equals("")) sReturnUnit = "MT"; 
+    //else sReturnUnit = strToUpper (sReturnUnit);
+    else sReturnUnit = sReturnUnit.toUpperCase();
+
+    if (sFlag == "" || sFlag == null || sFlag.equals("")) sFlag = "f"; 
+    //else sFlag = strToLower (sFlag);
+    else sFlag = sFlag.toLowerCase();
+
+    //if (strIndexOf (sStDate,"[^0-9]") != -1) return "";
+    //if (strIndexOf (sExDate,"[^0-9]") != -1) return "";
+    if (sStDate.indexOf("[^0-9]") != -1) return "";
+    if (sExDate.indexOf("[^0-9]") != -1) return "";
+ 
+
+    if (!comnCheckDateLen(sStDate, sDateFmt)) return "";
+    if (!comnCheckDateLen(sExDate, sDateFmt)) return "";
+
+    sDateFmtNew = comnChangeDateFmt(sDateFmt);
+    if (sDateFmtNew == null || sDateFmtNew.equals("")) return ""; 
+
+    //iLength = strLength(sExDate); 
+    iLength = sExDate.length(); 
+    String sDateFmtStart = CommonUtils.comnSubstring(sDateFmtNew, 0, 4);
+
+    if (sDateFmtStart == "yyyy" || sDateFmtStart.equals("yyyy")) {
+
+        if (iLength == 4) { 
+            //strToInt(iExDate, (sExDate + "0101")); 
+            //strToInt(iStDate, (sStDate + "0101"));
+            iExDate = Integer.parseInt(sExDate + "0101"); 
+            iStDate = Integer.parseInt(sStDate + "0101"); 
+            
+        } else if (iLength == 6) {
+            //strToInt(iExDate, (sExDate + "01")); 
+            //strToInt(iStDate, (sStDate + "01")); 
+            iExDate = Integer.parseInt(sExDate + "01"); 
+            iStDate = Integer.parseInt(sStDate + "01"); 
+        } else {
+            //strToInt(iExDate, strSubstring(sExDate, 0, 8));
+            //strToInt(iStDate, strSubstring(sStDate, 0, 8));
+            iExDate = Integer.parseInt(sExDate.substring(0, 8));
+            iStDate = Integer.parseInt(sStDate.substring(0, 8));
+        }
+
+        if (iLength > 8) {
+            //strToInt(iExTime, comnPadChr(CommonUtils.comnSubstring(sExDate, 8, 14), 6, "0", "R"));
+            //strToInt(iExMTime, comnPadChr(CommonUtils.comnSubstring(sExDate, 14, iLength), 3, "0", "R"));
+            //strToInt(iStTime, comnPadChr(CommonUtils.comnSubstring(sStDate, 8, 14), 6, "0", "R"));
+            //strToInt(iStMTime, comnPadChr(CommonUtils.comnSubstring(sStDate, 14, iLength), 3, "0", "R"));
+            iExTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sExDate, 8, 14), 6, "0", "R"));
+            iExMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sExDate, 14, iLength), 3, "0", "R"));
+            iStTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sStDate, 8, 14), 6, "0", "R"));
+            iStMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sStDate, 14, iLength), 3, "0", "R"));
+        }
+
+    } else if (sDateFmtStart == "MMdd" || sDateFmtStart.equals("MMdd")) {
+
+        sExDate = comnSystemDate("yyyy") + sExDate;
+        sStDate = comnSystemDate("yyyy") + sStDate;
+
+        if (iLength == 4) {
+            //strToInt(iExDate, sExDate);
+            //strToInt(iStDate, sStDate);
+            iExDate = Integer.parseInt(sExDate);
+            iStDate = Integer.parseInt(sStDate);
+            
+        } else {
+            //strToInt(iExDate, strSubstring(sExDate, 0, 8));
+            //strToInt(iStDate, strSubstring(sStDate, 0, 8));
+            //strToInt(iExTime, comnPadChr(CommonUtils.comnSubstring(sExDate, 8, 14), 6, "0", "R"));
+            //strToInt(iStTime, comnPadChr(CommonUtils.comnSubstring(sStDate, 8, 14), 6, "0", "R"));
+            //strToInt(iExMTime, comnPadChr(CommonUtils.comnSubstring(sExDate, 14, iLength), 3, "0", "R"));
+            //strToInt(iStMTime, comnPadChr(CommonUtils.comnSubstring(sStDate, 14, iLength), 3, "0", "R"));
+            iExDate = Integer.parseInt(sExDate.substring(0, 8));
+            iStDate = Integer.parseInt(sStDate.substring(0, 8));
+            iExTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sExDate, 8, 14), 6, "0", "R"));
+            iStTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sStDate, 8, 14), 6, "0", "R"));
+            iExMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sExDate, 14, iLength), 3, "0", "R"));
+            iStMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sStDate, 14, iLength), 3, "0", "R"));
+        }
+
+    } else if (sDateFmtStart == "HHmm" || sDateFmtStart.equals("HHmm")) {
+        if (iLength < 6) {
+            //strToInt(iExTime, sExDate + "00");
+            //strToInt(iStTime, sStDate + "00");
+            iExTime = Integer.parseInt(sExDate + "00");
+            iStTime = Integer.parseInt(sStDate + "00");
+        } else if (iLength == 6) {
+            //strToInt(iExTime, sExDate);
+            //strToInt(iStTime, sStDate);
+            iExTime = Integer.parseInt(sExDate);
+            iStTime = Integer.parseInt(sStDate);
+        } else {
+            //strToInt(iExTime, strSubstring(sExDate, 0, 6));
+            //strToInt(iStTime, strSubstring(sStDate, 0, 6));
+            //strToInt(iExMTime, comnPadChr(CommonUtils.comnSubstring(sExDate, 6, iLength), 3, "0", "R"));
+            //strToInt(iStMTime, comnPadChr(CommonUtils.comnSubstring(sStDate, 6, iLength), 3, "0", "R"));
+            iExTime = Integer.parseInt(sExDate.substring(0, 6));
+            iStTime = Integer.parseInt(sStDate.substring(0, 6));
+            iExMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sExDate, 6, iLength), 3, "0", "R"));
+            iStMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sStDate, 6, iLength), 3, "0", "R"));
+        }
+
+    } else if (sDateFmtStart == "mmss" || sDateFmtStart.equals("mmss")) {
+        if (iLength == 4) {
+            //strToInt(iExTime, sExDate);
+            //strToInt(iStTime, sStDate);
+            iExTime = Integer.parseInt(sExDate);
+            iStTime = Integer.parseInt(sStDate);
+        } else {
+            //strToInt(iExTime, strSubstring(sExDate, 0, 4));
+            //strToInt(iStTime, strSubstring(sStDate, 0, 4));
+            //strToInt(iExMTime, comnPadChr(CommonUtils.comnSubstring(sExDate, 4, iLength), 3, "0", "R"));
+            //strToInt(iStMTime, comnPadChr(CommonUtils.comnSubstring(sStDate, 4, iLength), 3, "0", "R"));
+            iExTime = Integer.parseInt(sExDate.substring(0, 4));
+            iStTime = Integer.parseInt(sStDate.substring(0, 4));
+            iExMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sExDate, 4, iLength), 3, "0", "R"));
+            iStMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sStDate, 4, iLength), 3, "0", "R"));
+        }
+
+    } else if (sDateFmtStart == "sstt" || sDateFmtStart.equals("sstt") || sDateFmtStart == "ssSS" || sDateFmtStart.equals("ssSS")) {
+        //strToInt(iExTime, strSubstring(sExDate, 0, 2));
+        //strToInt(iStTime, strSubstring(sStDate, 0, 2));
+        //strToInt(iExMTime, comnPadChr(CommonUtils.comnSubstring(sExDate, 2, iLength), 3, "0", "R"));
+        //strToInt(iStMTime, comnPadChr(CommonUtils.comnSubstring(sStDate, 2, iLength), 3, "0", "R"));
+        iExTime = Integer.parseInt(sExDate.substring(0, 2));
+        iStTime = Integer.parseInt(sStDate.substring(0, 2));
+        iExMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sExDate, 2, iLength), 3, "0", "R"));
+        iStMTime = Integer.parseInt(comnPadChr(CommonUtils.comnSubstring(sStDate, 2, iLength), 3, "0", "R"));
+
+    } else {
+        return null;
+    }
+
+    iExYear = iExDate / 10000; 
+    iExMonth = (iExDate / 100) - (iExYear*100);
+    iExDay = iExDate - (iExYear*10000) - (iExMonth*100);
+    iStYear = iStDate / 10000;
+    iStMonth = (iStDate / 100) - (iStYear*100);
+    iStDay = iStDate - (iStYear*10000) - (iStMonth*100);
+
+    iExHour = iExTime / 10000;
+    iExMinute = (iExTime / 100) - (iExHour*100);
+    iExSecond = iExTime - (iExHour*10000) - (iExMinute*100);
+    iStHour = iStTime / 10000;
+    iStMinute = (iStTime / 100) - (iStHour*100);
+    iStSecond = iStTime - (iStHour*10000) - (iStMinute*100);
+
+    lExMilliSec = comnTransMilliSecond(iExYear, iExMonth, iExDay, iExHour, iExMinute, iExSecond);
+    if (lExMilliSec == -1) return null;
+    lStMilliSec = comnTransMilliSecond(iStYear, iStMonth, iStDay, iStHour, iStMinute, iStSecond);
+    if (lStMilliSec == -1) return null;
+    lExMilliSec = lExMilliSec + iExMTime ;
+    lStMilliSec = lStMilliSec + iStMTime ;
+ 
+    lTimeDiff = lExMilliSec - lStMilliSec;
+    
+    if ((sDateFmtNew == "hhmmss" || sDateFmtNew.equals("hhmmss") )&& lStMilliSec > lExMilliSec && (sReturnUnit == "S"|| sReturnUnit.equals("S")))  lTimeDiff = lTimeDiff - 86400; 
+
+    if (sFlag == "c" || sFlag.equals("c")) {
+        if (sReturnUnit == "YY" || sReturnUnit.equals("YY"))  {
+            if ((lTimeDiff / 31536 / 1000000.0) != (lTimeDiff / 31536 / 1000000)) lTimeDiff = (long)(lTimeDiff / 31536 / 1000000.0) + 1;
+            else lTimeDiff = (lTimeDiff / 31536 / 1000000);
+        }
+        else if (sReturnUnit == "MM" || sReturnUnit.equals("MM")) {
+            if ((lTimeDiff / 2628 / 1000000.0) != (lTimeDiff / 2628 / 1000000)) lTimeDiff = (long)(lTimeDiff / 2628 / 1000000.0) + 1;
+            else lTimeDiff = (lTimeDiff / 2628 / 1000000);
+        }
+        else if (sReturnUnit == "DD" || sReturnUnit.equals("DD")) {
+            if ((lTimeDiff / 86400000.0) != (lTimeDiff / 86400000)) lTimeDiff = (long)(lTimeDiff / 86400000.0) + 1;
+            else lTimeDiff = (lTimeDiff / 86400000);
+        } 
+        else if (sReturnUnit == "H" || sReturnUnit.equals("H")) {
+            if ((lTimeDiff / 3600000.0) != (lTimeDiff / 3600000)) lTimeDiff = (long)(lTimeDiff / 3600000.0) + 1;
+            else lTimeDiff = (lTimeDiff / 3600000);
+        }  
+        else if (sReturnUnit == "M" || sReturnUnit.equals("M")) {
+            if ((lTimeDiff / 60000.0) != (lTimeDiff / 60000)) lTimeDiff = (long)(lTimeDiff / 60000.0) + 1;
+            else lTimeDiff = (lTimeDiff / 60000);
+        } 
+        else if (sReturnUnit == "S" || sReturnUnit.equals("S")) {
+            if ((lTimeDiff / 1000.0) > (lTimeDiff / 1000)) lTimeDiff = (long)(lTimeDiff / 1000.0) + 1;
+            else lTimeDiff = (lTimeDiff / 1000);
+        } 
+        else if (sReturnUnit == "T" || sReturnUnit.equals("T")) {
+            if ((lTimeDiff / 100.0) != (lTimeDiff / 100)) lTimeDiff = (long)(lTimeDiff / 100.0) + 1;
+            else lTimeDiff = (lTimeDiff / 100);
+        } 
+        else if (sReturnUnit == "TT" || sReturnUnit.equals("TT")) {
+            if ((lTimeDiff / 10.0) != (lTimeDiff / 10)) lTimeDiff = (long)(lTimeDiff / 10.0) + 1;
+            else lTimeDiff = (lTimeDiff / 10);
+        } 
+    }
+    else if (sFlag == "r" || sFlag.equals("r")) {
+        if      (sReturnUnit == "YY" || sReturnUnit.equals("YY"))   lTimeDiff = (long)((lTimeDiff / 31536 / 1000000.0) + 0.5); 
+        else if (sReturnUnit == "MM" || sReturnUnit.equals("MM"))   lTimeDiff = (long)((lTimeDiff / 2628 / 1000000.0) + 0.5); 
+        else if (sReturnUnit == "DD" || sReturnUnit.equals("DD"))   lTimeDiff = (long)((lTimeDiff / 86400000.0) + 0.5); 
+        else if (sReturnUnit == "H" || sReturnUnit.equals("H"))    lTimeDiff = (long)((lTimeDiff / 3600000.0) + 0.5); 
+        else if (sReturnUnit == "M" || sReturnUnit.equals("M"))    lTimeDiff = (long)((lTimeDiff / 60000.0) + 0.5); 
+        else if (sReturnUnit == "S" || sReturnUnit.equals("S"))    lTimeDiff = (long)((lTimeDiff / 1000.0) + 0.5); 
+        else if (sReturnUnit == "T" || sReturnUnit.equals("T"))    lTimeDiff = (long)((lTimeDiff / 100.0) + 0.5); 
+        else if (sReturnUnit == "TT" || sReturnUnit.equals("TT"))   lTimeDiff = (long)((lTimeDiff / 10.0) + 0.5); 
+    }
+    else {
+        if      (sReturnUnit == "YY" || sReturnUnit.equals("YY"))   lTimeDiff = (lTimeDiff / 31536 / 1000000); 
+        else if (sReturnUnit == "MM" || sReturnUnit.equals("MM"))   lTimeDiff = (lTimeDiff / 2628 / 1000000); 
+        else if (sReturnUnit == "DD" || sReturnUnit.equals("DD"))   lTimeDiff = (lTimeDiff / 86400000); 
+        else if (sReturnUnit == "H" || sReturnUnit.equals("H"))    lTimeDiff = (lTimeDiff / 3600000); 
+        else if (sReturnUnit == "M" || sReturnUnit.equals("M"))    lTimeDiff = (lTimeDiff / 60000); 
+        else if (sReturnUnit == "S" || sReturnUnit.equals("S"))    lTimeDiff = (lTimeDiff / 1000); 
+        else if (sReturnUnit == "T" || sReturnUnit.equals("T"))    lTimeDiff = (lTimeDiff / 100); 
+        else if (sReturnUnit == "TT" || sReturnUnit.equals("TT"))   lTimeDiff = (lTimeDiff / 10); 
+    }
+
+    //return (String)(lTimeDiff);
+    return String.valueOf(lTimeDiff);
+}
+
+rule "INTCC Validate Rule"
+dialect "mvel"
+salience 30
+    when
+    	$uBody : INTCCBody()
+    	eval(true)
+     then
+    	ArrayList ltErrorCd = new ArrayList();
+ 
+ 
+       //
+        //  RULE_NAME : calling_number_not_mobile_prefix
+        //  ERR CODE : 674, <ERR> Calling No not mobile prefix
+        //
+        //if( comnCheckStrLength($uBody.sCallingNumber) && !(listFindIndex(LST_MOBILE_PREFIX, i, i == comnSubstring($uBody.sCallingNumber, 0, 3)) > -1) ){
+        if( comnCheckStrLength($uBody.sCallingNumber) && !$uBody.LST_MOBILE_PREFIX.contains(CommonUtils.comnSubstring($uBody.sCallingNumber, 0, 3)) ){
+
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_calling_number_4");
+        }
+
+ 
+
+ 
+       //
+        //  RULE_NAME : charge_amount_is_0_dacom
+        //  ERR CODE : 660, <ERR> Charge amount is 0
+        //
+        if( ($uBody.bCJH_DACOM_CDR || $uBody.bDRLINE_CDR) && $uBody.charge_amount == 0 ) {
+
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_charge_amount_3");
+        }
+
+ 
+       //
+        //  RULE_NAME : charge_per_message_is_0
+        //  ERR CODE : 662, <ERR> Charge per message is 0
+        //
+        if( ($uBody.bCJH_DACOM_CDR || $uBody.bDRLINE_CDR) && $uBody.charge_per_message == 0 ) {
+  
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_charge_per_message_3");
+        }
+
+ 
+       //
+        //  RULE_NAME : check_start_date
+        //  ERR CODE : 654, <ERR> DATE > 1 or < -60 day
+        //
+        int iDiffStartDate = 0;  
+        //strToInt(iDiffStartDate, comnDateDiff($uBody.sCallStartDate, comnSystemDate("yyyyMMdd"), "yyyyMMdd", "DD", "f"));
+        iDiffStartDate = Integer.parseInt(comnDateDiff($uBody.sCallStartDate, comnSystemDate("yyyyMMdd"), "yyyyMMdd", "DD", "f"));
+
+ 
+       if ( (iDiffStartDate > 1 || iDiffStartDate < -90) && !($uBody.sCallStartDate == "19700101" && $uBody.sCallStartDate.equals("19700101"))) {
+           
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_call_start_date_3");
+        }
+
+ 
+       //
+        //  RULE_NAME : intl_prefix_not_exist
+        //  ERR CODE : 664, <ERR> International prefix is wrong 
+        //
+        //if( !comnCheckStrLength($uBody.intl_prefix) && !($uBody.gubun1 == "3") ){
+        if( !comnCheckStrLength($uBody.intl_prefix) && !($uBody.gubun1.equals("3")) ){
+            
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_intl_prefix_3");
+        }
+
+
+       //
+        //  RULE_NAME : message_rate_is_0_dacom
+        //  ERR CODE : 661, <ERR> Message rate is 0
+        //
+        if( $uBody.bCJH_DACOM_CDR && $uBody.message_rate == 0 ){
+            
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_message_rate_3");
+        }
+
+ 
+        //
+        //  RULE_NAME : nation_code_not_exist
+        //  ERR CODE : 666, <ERR> Nation code is wrong
+        //
+        //if( !comnCheckStrLength($uBody.nation_code) && !($uBody.gubun1 == "3")){
+        if( !comnCheckStrLength($uBody.nation_code) && !($uBody.gubun1.equals("3"))){
+            
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_nation_code_3");
+        }
+
+ 
+        //
+        //  RULE_NAME : use_time_is_0
+        //  ERR CODE : 659, <ERR> Duration is 0
+        //
+        if( ($uBody.bCJH_DACOM_CDR || $uBody.bDRLINE_CDR) && $uBody.use_time == 0){
+            
+            ltErrorCd = audit.listAdd(ltErrorCd, "u_use_time_3");
+        }
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ 
+
+//        string sErrLevelDivCd;
+//        if (listSize(ltErrorCd) > 0) {
+//            listSort(ltErrorCd, iErrPriority, ascending);  
+//            ErrorCD_Intl uMainErrCd = udrCreate(ErrorCD_Intl);
+//            uMainErrCd    = listGet(ltErrorCd, 0);
+//            sErrLevelDivCd = uMainErrCd.sErrLevelDivCd;
+//        }
+//        
+//        
+//        if (sErrLevelDivCd != null && (sErrLevelDivCd == "10" || sErrLevelDivCd == "20" || sErrLevelDivCd == "30")) {
+//            debug("sErrLevelDivCd==="+sErrLevelDivCd);
+//            ErrorCDR_Intl uErrCdr = udrCreate(ErrorCDR_Intl);
+//            uErrCdr.lUserDatSeq    =  (long)mimGet("Apl_Populate", "UserDatSeq");
+//            uErrCdr.iCdrSeq        =  $uBody.iCdrSeq  ;
+//            uErrCdr.sFileId        =  (string)mimGet("Disk_In", "Source Filename") ;
+//           uErrCdr.sCallgNo       =  $uBody.sCallingNumber; 
+//            uErrCdr.sCalldNo       =  $uBody.called_number;  
+//            strToDate(uErrCdr.dClstrDate, $uBody.sCallStartDate,"yyyyMMdd");         
+//            uErrCdr.sClstrTod      =  $uBody.sCallStartTime;                         
+//            strToDate(uErrCdr.dCstpDate, $uBody.sCallTermDate,"yyyyMMdd");          
+//            uErrCdr.sCstpTod       =  $uBody.sCallTermTime;                           
+//            uErrCdr.sErrLevelDivCd  = sErrLevelDivCd ;                             
+//
+// 
+//            int iErrCnt = listSize(ltErrorCd) ;
+//            ErrorCD_Intl uErrCd = udrCreate(ErrorCD_Intl);
+//            list<string> ltErrCd = listCreate(string);
+//            int i = 0;
+//            while(i < 5) {
+//                if (i < iErrCnt) {
+//                    uErrCd = listGet(ltErrorCd, i);
+//                    listAdd(ltErrCd,uErrCd.sErrCd);
+//                } else {
+//                    listAdd(ltErrCd,"");
+//                }
+//                i = i + 1;
+//            }
+//
+// 
+//            uErrCdr.sErr1Cd = listGet(ltErrCd, 0) ; 
+//            uErrCdr.sErr2Cd = listGet(ltErrCd, 1) ;  
+//            uErrCdr.sErr3Cd = listGet(ltErrCd, 2) ; 
+//            uErrCdr.sErr4Cd = listGet(ltErrCd, 3) ; 
+//            uErrCdr.sErr5Cd = listGet(ltErrCd, 4) ; 
+//            //uErrCdr.sCdrTxn = baToStr(input.OriginalData);
+//            uErrCdr.baCdrSbst = input.OriginalData  ;  
+//            uErrCdr.dFirstCretDt       = dateCreateNow();                              
+//            uErrCdr.sFirstCretTrtrId   = (string)mimGet("Apl_Populate","InstanceName"); 
+//            uErrCdr.dLastChgDt         = dateCreateNow();                             
+//            uErrCdr.sLastChgTrtrId     = (string)mimGet("Apl_Populate","InstanceName"); 
+//            uErrCdr.sFirstCretPgmId    = (string)mimGet("Workflow", "Workflow Name");  
+//            uErrCdr.sLastChgPgmId      = (string)mimGet("Workflow", "Workflow Name");  
+//            uErrCdr.lCharge            =  $uBody.charge_amount;   
+//            //  2016-06-17  FeatureCode
+//            string sCallStartDateTime = $uBody.call_start_date + $uBody.call_start_time;
+//            string sCarrierCode = wlssExtrtCarrierCd($uBody.intl_prefix);
+//
+// 
+//            TB_FEATR_BAS_Intl uGetFeatureCode = get_TB_FEATR_BAS("SP_FE_CODE" , "INTCC" ,sCarrierCode,sCallStartDateTime); 
+//            if (uGetFeatureCode != null) {
+//                uErrCdr.sFeatureCode = uGetFeatureCode.sFeatureCd;
+//            }
+//            //  2016-06-17  FeatureCode 
+//
+// 
+//            udrRoute(uErrCdr,"to_Drew");
+//
+// 
+//        } else {
+//            udrRoute($uBody,"to_Mapping");
+//        }
+
+
+		
+		String sErrLevelDivCd = "";
+		if ( ltErrorCd.size() != 0 ) {
+			ltErrorCd = audit.sort(ltErrorCd);
+			TbErrMappgBasInfoKey tempErrorCd = ltErrorCd.get(0);
+			sErrLevelDivCd = tempErrorCd.sErrLevelDivCd;
+		}
+		
+	    
+	    //System.out.println("sErrLevelDivCd :: " + sErrLevelDivCd);
+	    if (sErrLevelDivCd != null && (sErrLevelDivCd.equals("10") || sErrLevelDivCd.equals("20") || sErrLevelDivCd.equals("30"))) {
+	    	String[] ltErrCd = new String[5];
+	    	
+	    	for (int i=0; i < 5; i++) {
+	    	     if (i == 1) {
+	    	     	TbErrMappgBasInfoKey tempErrorCd = ltErrorCd.get(0);
+	    	        ltErrCd[0] = new String(tempErrorCd.sErrCd);
+	    	     } else {
+	    	        ltErrCd[i] = new String("");
+	    	     }
+	    	}
+	    	
+	    	$uBody.sMzErrorCd01 = ltErrCd[0];
+	        $uBody.sMzErrorCd02 = ltErrCd[1];
+	        $uBody.sMzErrorCd03 = ltErrCd[2];
+	        $uBody.sMzErrorCd04 = ltErrCd[3];
+	        $uBody.sMzErrorCd05 = ltErrCd[4];
+	    }
+	    
+	String sCallStartDateTime = $uBody.call_start_date + $uBody.call_start_time;
+        String sCarrierCode = wlssExtrtCarrierCd($uBody.intl_prefix);
+
+ 
+        //TB_FEATR_BAS_Intl uGetFeatureCode = get_TB_FEATR_BAS("SP_FE_CODE" , "INTCC" ,sCarrierCode,sCallStartDateTime); 
+        TbFeatrBasInfo uGetFeatureCode = audit.get_TB_FEATR_BAS("SP_FE_CODE" , "INTCC" ,sCarrierCode,sCallStartDateTime);
+        if (uGetFeatureCode != null) {
+           
+	    System.out.println("uGetFeatureCode exist data");
+        }
+	 //uErrCdr.sFeatureCode = uGetFeatureCode.sFeatureCd;  << have to replace above statement
+	    
+	    
+	    if ( ltErrorCd.size() != 0 ) {
+			INTCCErrorCdr errorResult = new INTCCErrorCdr($uBody);
+			insert(errorResult);
+		} else {
+			INTCCResultCdr correctResult = new INTCCResultCdr($uBody);
+			insert(correctResult);
+		}
+
+    	
+end

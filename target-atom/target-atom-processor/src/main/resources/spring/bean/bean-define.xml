@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:camel="http://camel.apache.org/schema/spring"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd    http://www.springframework.org/schema/tx   http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+    <!-- <bean
+        class="org.springframework.jdbc.datasource.DriverManagerDataSource" id="dataSource">
+        <property name="driverClassName" value="${spring.datasource.driver-class-name}"/>
+        <property name="url" value="${spring.datasource.url}"/>
+        <property name="username" value="${spring.datasource.username}"/>
+        <property name="password" value="${spring.datasource.password}"/>
+    </bean>-->
+    <bean class="org.apache.activemq.camel.component.ActiveMQComponent" id="jms">
+        <property name="brokerURL" value="${activemq.brokerURL}"/>
+        <property name="username" value="${activemq.username}"/>
+        <property name="password" value="${activemq.password}"/>
+        <property name="deliveryPersistent" value="true"/>
+    </bean>
+    
+	<bean id="rabbitConnectionFactory"
+		class="com.rabbitmq.client.ConnectionFactory">
+		<property name="host" value="${rabbitmq.hostName}" />
+		<property name="port" value="${rabbitmq.port}" />
+		<property name="username" value="${rabbitmq.username}" />
+		<property name="password" value="${rabbitmq.password}" />
+	</bean>
+	
+    <bean class="org.apache.commons.dbcp.BasicDataSource"
+        destroy-method="close" id="dataSource">
+        <property name="driverClassName" value="${spring.datasource.driver-class-name}"/>
+        <property name="url" value="${spring.datasource.url}"/>
+        <property name="username" value="${spring.datasource.username}"/>
+        <property name="password" value="${spring.datasource.password}"/>
+    </bean>
+    <bean
+        class="org.springframework.jdbc.datasource.DataSourceTransactionManager" id="transactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <bean class="com.ktds.targetatom.bean.AuditHandler" id="auditHandler"/>
+    <bean class="org.apache.camel.impl.DefaultShutdownStrategy" id="defaultShutdownStrategy">
+        <property name="timeout" value="5"/>
+        <property name="suppressLoggingOnTimeout" value="true"/>
+        <property name="shutdownNowOnTimeout" value="true"/>
+    </bean>
+    <bean class="com.ktds.targetatom.cdr.transform.VoLTETransformer" id="voLTETransformer"/>
+    <bean class="com.ktds.targetatom.cdr.transform.INTCCTransformer" id="intCCTransformer"/>
+    <bean class="com.ktds.targetatom.cdr.transform.INTKTTransformer" id="intKTTransformer"/>
+</beans>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes id="fileCopyRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="_route2">
+        <from id="_from" uri="direct:start1"/>
+        <bean id="_bean21" ref="filePathProcessor"/>
+        <!-- <log id="_log2" loggingLevel="WARN" message="Header:toFilePath = ${header.toFilePath}"/> -->
+        <!-- <log id="_log28" loggingLevel="WARN" message="Header:fileChkResult = ${header.fileChkResult}"/> -->
+        <choice id="_choice1">
+            <when id="_when1">
+                <simple>${header.fileChkResult} contains 'CHK_SUCCESS'</simple>
+                <doTry id="_CheckException">
+                    <bean id="_bena23"
+                        method="insertFirstCollAditHst(*, 'COL_KR', 0, ${file:onlyname}, ${file:parent}, ${file:onlyname}, 'IU', 'COL')" ref="cretAditHst"/>
+                    <toD id="_toPRC" uri="file:${header.toFilePath}?fileName=${file:name}"/>
+                    <!-- <log id="_log27" loggingLevel="WARN" message="Header:aditSeq = ${header.aditSeq}"/> -->
+                    <toD id="_toARCH" uri="file:${header.rawFilePath}?fileName=${file:name}"/>
+                    <bean id="_bean25" method="uptCollComplete(*)" ref="cretAditHst"/>
+                    <doCatch id="_CatchException">
+                        <exception>java.lang.Exception</exception>
+                        <!-- <exception>java.lang.IllegalArgumentException</exception> -->
+                    </doCatch>
+                </doTry>
+                <choice id="_choiceFinMv">
+                    <when id="_whenFinMv">
+                        <simple>${header.finFileProc} contains 'moveArch'</simple>
+                        <inOnly id="toFinMv" uri="direct:fromFinMv"/>
+                    </when>
+                </choice>
+            </when>
+            <otherwise id="_otherwise1">
+                <toD id="_toERR" uri="file:${header.errFilePath}?fileName=${file:name}"/>
+            </otherwise>
+        </choice>
+    </route>
+    <route id="_rtFinMv">
+        <!-- <toD id="_toFinMv" uri="file:${header.finFileTrmPath}?fileName=${header.finFileName}"/> -->
+        <from id="fromFinMv" uri="direct:fromFinMv"/>
+        <pollEnrich id="_pollEnrich2">
+            <!-- <simple>file:${header.finFileCollPath}?fileName=${header.finFileName}&amp;delete=true</simple> -->
+            <simple>file:${exchangeProperty[finFileCollPath]}?fileName=${exchangeProperty[finFileName]}&amp;delete=true</simple>
+        </pollEnrich>
+        <!-- <log id="_log32" loggingLevel="WARN" message="property is : ${exchangeProperty[finFileCollPath]}"/> -->
+        <toD id="_toFinMv" uri="file:${exchangeProperty[finFileTrmPath]}?fileName=${exchangeProperty[finFileName]}"/>
+    </route>
+</routes>

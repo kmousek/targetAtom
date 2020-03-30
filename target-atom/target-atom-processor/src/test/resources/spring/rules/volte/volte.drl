@@ -1,0 +1,86 @@
+package spring.rules.volte
+
+//list any import classes here.
+import com.ktds.targetatom.drools.CdrInfo;
+import com.ktds.targetatom.util.CdrUtils;
+import com.ktds.targetatom.util.TypeUtils;
+
+//declare any global variables here
+
+
+
+rule "VOLTE.validate 0 packet"
+	when 
+        cdrInfo : CdrInfo(cdrInfo.getInput().get("record_type") != "1")
+    then
+    	if(TypeUtils.toLong(cdrInfo.getInput().get("service_download_data_octects")) > 0L) {
+			System.out.println(TypeUtils.TYPE_ID);
+			cdrInfo.setOutput(cdrInfo.getInput());
+	     	insert(cdrInfo);
+	    } else { 
+			cdrInfo.setError(cdrInfo.getInput());
+	     	insert(cdrInfo);
+     	}
+end     
+
+
+/*
+rule "Error for Charing time > Valid Time" extends "Common Rule for Charging Date" 
+salience 5
+    when
+    	
+        // default format : "dd-MMM-yyyy"
+        dt : KRBody( (sChrgDateTime.after(sValidDateTime) ) || eval(!chkDate(dt.getsChrgDateTime()) ))
+               //|| sChrgDateTime > "20190311000000" )
+    then
+      	KRErrorFormat errored = new KRErrorFormat();
+      
+    	errored.setsSaId(dt.getsChrgId());
+		errored.setsCallStartDt(dt.getsChrgDateTime());
+		errored.setsCallEndDt(dt.getsValidDateTime());
+		errored.setsPmntNm(dt.getsPmntNm()) ;
+		errored.setsPrice(dt.getlChrgAmt()) ;
+		errored.setsInvAmount(dt.getlChrgAmt01()) ;
+		errored.setsDcAmount(dt.getlChrgAmt02()) ;
+		errored.setsSerialNo(dt.getsBillingCd());
+		errored.setsPvsId(dt.getsChrgNo());
+		errored.setsPattern(dt.getsPattern());
+		errored.setsRequestBillSeqNo(dt.getsOrderNo());
+		
+		insert( errored );
+		dt.setsFlag(true);
+end
+
+rule "Error for service type"
+    when
+     sType : KRBody( sServiceType != "2" )
+      
+    then
+     
+      	KRErrorFormat errored = new KRErrorFormat();
+      
+    	errored.setsSaId(sType.getsChrgId());
+		errored.setsCallStartDt(sType.getsChrgDateTime());
+		errored.setsCallEndDt(sType.getsValidDateTime());
+		errored.setsPmntNm(sType.getsPmntNm()) ;
+		errored.setsPrice(sType.getlChrgAmt()) ;
+		errored.setsInvAmount(sType.getlChrgAmt01()) ;
+		errored.setsDcAmount(sType.getlChrgAmt02()) ;
+		errored.setsSerialNo(sType.getsBillingCd());
+		errored.setsPvsId(sType.getsChrgNo());
+		errored.setsPattern(sType.getsPattern());
+		errored.setsRequestBillSeqNo(sType.getsOrderNo());
+		
+		insert( errored );
+		sType.setsFlag(true);
+end
+
+rule "Your Second Rule"
+    //include attributes such as "salience" here...
+    when
+        //conditions
+    then
+        //actions
+
+end
+*/

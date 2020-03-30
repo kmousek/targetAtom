@@ -1,0 +1,94 @@
+package drools.rules.test_volte
+
+//list any import classes here.
+import com.ktds.targetatom.drools.CdrInfo;
+
+//declare any global variables here
+
+
+//rule "TestVOLTE.validate 0 packet" 
+
+//    when
+//        $cdr : CdrInfo(output.get("upload_data_octets")
+//       
+//    then
+//     
+//      	KRErrorFormat errored = new KRErrorFormat();
+//      
+//   	errored.setsSaId(bCode.getsChrgId());
+//		errored.setsCallStartDt(bCode.getsChrgDateTime());
+//		errored.setsCallEndDt(bCode.getsValidDateTime());
+//		errored.setsPmntNm(bCode.getsPmntNm()) ;
+//		errored.setsPrice(bCode.getlChrgAmt()) ;
+//		errored.setsInvAmount(bCode.getlChrgAmt01()) ;
+//		errored.setsDcAmount(bCode.getlChrgAmt02()) ;
+//		errored.setsSerialNo(bCode.getsBillingCd());
+//		errored.setsPvsId(bCode.getsChrgNo());
+//		errored.setsPattern(bCode.getsPattern());
+//		errored.setsRequestBillSeqNo(bCode.getsOrderNo());
+		
+//		insert( errored );
+//		bCode.setsFlag(true);
+//
+//end
+
+/*
+rule "Error for Charing time > Valid Time" extends "Common Rule for Charging Date" 
+salience 5
+    when
+    	
+        // default format : "dd-MMM-yyyy"
+        dt : KRBody( (sChrgDateTime.after(sValidDateTime) ) || eval(!chkDate(dt.getsChrgDateTime()) ))
+               //|| sChrgDateTime > "20190311000000" )
+    then
+      	KRErrorFormat errored = new KRErrorFormat();
+      
+    	errored.setsSaId(dt.getsChrgId());
+		errored.setsCallStartDt(dt.getsChrgDateTime());
+		errored.setsCallEndDt(dt.getsValidDateTime());
+		errored.setsPmntNm(dt.getsPmntNm()) ;
+		errored.setsPrice(dt.getlChrgAmt()) ;
+		errored.setsInvAmount(dt.getlChrgAmt01()) ;
+		errored.setsDcAmount(dt.getlChrgAmt02()) ;
+		errored.setsSerialNo(dt.getsBillingCd());
+		errored.setsPvsId(dt.getsChrgNo());
+		errored.setsPattern(dt.getsPattern());
+		errored.setsRequestBillSeqNo(dt.getsOrderNo());
+		
+		insert( errored );
+		dt.setsFlag(true);
+end
+
+rule "Error for service type"
+    when
+     sType : KRBody( sServiceType != "2" )
+      
+    then
+     
+      	KRErrorFormat errored = new KRErrorFormat();
+      
+    	errored.setsSaId(sType.getsChrgId());
+		errored.setsCallStartDt(sType.getsChrgDateTime());
+		errored.setsCallEndDt(sType.getsValidDateTime());
+		errored.setsPmntNm(sType.getsPmntNm()) ;
+		errored.setsPrice(sType.getlChrgAmt()) ;
+		errored.setsInvAmount(sType.getlChrgAmt01()) ;
+		errored.setsDcAmount(sType.getlChrgAmt02()) ;
+		errored.setsSerialNo(sType.getsBillingCd());
+		errored.setsPvsId(sType.getsChrgNo());
+		errored.setsPattern(sType.getsPattern());
+		errored.setsRequestBillSeqNo(sType.getsOrderNo());
+		
+		insert( errored );
+		sType.setsFlag(true);
+end
+
+rule "Your Second Rule"
+    //include attributes such as "salience" here...
+    when
+        //conditions
+    then
+        //actions
+
+end
+*/

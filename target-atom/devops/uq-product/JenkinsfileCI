@@ -1,0 +1,136 @@
+def label = "uq_uq-product-${UUID.randomUUID().toString()}"
+def serviceaccount = "jenkins-uq"
+def serviceName = "uq-product"
+
+def notifyStarted() {
+    mattermostSend color: 'good', message: "STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+}
+
+def notifySuccessful(message) {
+    mattermostSend color: 'good', message: "SUCCEED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+def notifyFailed(message) {
+  mattermostSend color: 'danger', message: "FAILED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+podTemplate(label: label, serviceAccount: serviceaccount,
+	containers: [
+		containerTemplate(name: 'jnlp', image: 'ktis-bastion01.container.ipc.kt.com:5000/jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}',
+			resourceRequestCpu: "100m", resourceLimitCpu: "200m", resourceRequestMemory: "100Mi", resourceLimitMemory: "300Mi"),
+		containerTemplate(name: 'maven', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/maven:3.3.9-jdk-8-alpine', ttyEnabled: true, command: 'cat', 
+			resourceRequestCpu: "400m", resourceLimitCpu: "1000m", resourceRequestMemory: "500Mi", resourceLimitMemory: "2000Mi"),
+		containerTemplate(name: 'docker', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/docker:stable', ttyEnabled: true, command: 'cat',
+			resourceRequestCpu: "10m", resourceLimitCpu: "100m", resourceRequestMemory: "100Mi", resourceLimitMemory: "300Mi"),
+		containerTemplate(name: 'oc', image: 'ktis-bastion01.container.ipc.kt.com:5000/openshift3/ose-cli:latest', command: 'cat', ttyEnabled: true,
+			resourceRequestCpu: "10m", resourceLimitCpu: "100m", resourceRequestMemory: "50Mi", resourceLimitMemory: "100Mi")
+	],
+	volumes: [hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock')]
+	) {
+	
+	node(label) {
+		try {
+			def commitId		
+		  
+			stage('Get Source') {
+				git url: "http://10.217.59.20/usage-query/usage-query.git",
+					credentialsId: 'git-credentials',
+					branch: 'master'
+					commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+			}
+			def props = readProperties  file:'devops/${serviceName}/pipelineCI.properties'
+			def tag = commitId
+			def gitSrc = props['gitSrc']
+			def dockerRegistry = props['dockerRegistry']
+			def image = props['image']
+			def deployment = props['deployment']
+			def service = props['service']
+			def selector = props['selector']
+			def namespace = props['namespace']
+			def appname = props['appname']
+
+			stage('Unit Test'){
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+						
+				container('maven') {
+					def mvnSettings = "${env.WORKSPACE}/devops/settings.xml"
+					sh "mvn test --settings ${mvnSettings} --projects usage-query-service"
+				}
+				
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+			
+			stage('maven build project') {
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				container('maven') {
+					def mvnSettings = "${env.WORKSPACE}/devops/settings.xml"
+					sh "mvn clean install -DskipTests --settings ${mvnSettings} --projects usage-query-service"
+				}
+				
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+
+		
+			stage('Build Docker image') {
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				container('docker') {				
+					docker.withRegistry("${dockerRegistry}", 'cluster-registry-credentials') {
+						//sh "mvn clean package --settings ${mvnSettings} -DskipTests docker:build"
+						//sh "docker build -t ${image}:${tag} ."
+        				sh "docker build -t ${image}:${tag} . -f ./devops/${appname}/Dockerfile-dev"
+						sh "docker push ${image}:${tag}"
+						sh "docker tag ${image}:${tag} ${image}:latest"
+						sh "docker push ${image}:latest"
+					}
+				}
+				
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+
+			stage( 'Deploy to Cluster' ) {
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				container('oc') {
+					/* rolling update */
+					sh "oc -n ${namespace} --record=true set image deployment ${selector} ${appname}=${image}:${tag}"
+					sh "oc -n ${namespace} rollout status deployment ${selector}"        
+				}
+				
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+			
+			notifySuccessful()
+		} catch(e) {
+			buildMessage="$buildMessage **Error :: "+ e.toString()+"**"
+			
+			currentBuild.result = "FAILED"
+			notifyFailed(buildMessage)
+		}
+	}
+}

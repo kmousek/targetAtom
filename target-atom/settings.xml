@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+<!-- 	<mirrors>
+		<mirror>
+			<id>public</id>
+			<mirrorOf>*</mirrorOf>
+			<url>http://10.217.59.89/nexus/content/groups/public</url>
+		</mirror>
+	</mirrors> -->
+<!-- 	<profiles>
+		<profile>
+			<id>nexus</id>
+			<repositories>
+				<repository>
+					<id>local-repo</id>
+					<url>file://${project.basedir}/lib</url>
+					<name>Local Repository</name>
+				</repository>
+
+				<repository>
+					<id>nexus-repo</id>
+					<url>http://10.217.59.89/nexus/content/groups/public</url>
+					<name>Nexus Repository</name>
+				</repository>
+
+				<repository>
+					<id>jenkins-repo</id>
+					<url>file://${JEKINS_HOME}/jobs/${JOB_NAME}/workspace/lib</url>
+					<name>Jenkins Repository</name>
+				</repository>
+			</repositories>
+			<pluginRepositories>
+				<repository>
+					<id>nexus-repo</id>
+					<url>http://10.217.59.89/nexus/content/groups/public</url>
+					<name>Nexus Repository</name>
+				</repository>
+			</pluginRepositories>
+		</profile>
+	</profiles> -->
+</settings>

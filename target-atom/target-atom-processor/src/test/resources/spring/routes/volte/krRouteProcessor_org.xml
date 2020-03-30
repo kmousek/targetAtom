@@ -1,0 +1,77 @@
+<!-- <?xml version="1.0" encoding="UTF-8"?>
+<routes id="fileCopyRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="KR_Router">
+        <from id="_FileInput" uri="direct:source"/>
+        <bean id="_AuditCheck" method="selectTarget" ref="auditHandler"/>
+        <choice id="_CheckAudit">
+            <when id="_NoAudit">
+                <simple>${header.file.existAudit} != 'Y'</simple>
+                <toD id="_FileError" uri="file:${header.CamelFileParent}/NOTEXIST"/>
+            </when>
+            <otherwise id="_ExistAudit">
+                <doTry id="_CheckException">
+                    <bean id="_UpdateAuditParsing"
+                        method="updateAudit(*, 'CO', 'MZN', 'PRC_KR', ${body.size}, '0', ${body.size})" ref="mznDBProcessor"/>
+                    <bean id="_UpdateAuditProcess"
+                        method="updateStatusAudit(*, 'IU', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+                    <convertBodyTo charset="ISO-8859-1"
+                        id="_ConvertEncoding1" type="java.lang.String"/>
+                    <unmarshal id="_FileParsing">
+                        <bindy
+                            classType="com.targetatom.ktds.dao.kr.input.KRBody"
+                            locale="korea" type="Fixed"/>
+                    </unmarshal>
+                    <bean id="_validateParsing" method="validateParsing" ref="procFormat"/>
+                    <bean id="_UpdateAuditParsing"
+                        method="updateAudit(*, 'CO', 'MZN', 'PRC_KR', ${header.parsing.size}, '0', ${header.parsing.size})" ref="auditHandler"/>
+                    <multicast id="_FileDistributor" parallelProcessing="false">
+                        <toD id="_ProcessNRat" uri="direct:NRAT"/>
+                        <toD id="_ProcessDrop" uri="direct:DROP"/>
+                    </multicast>
+                    <doCatch id="_CatchException">
+                        <exception>java.lang.IllegalArgumentException</exception>
+                        <bean id="_NoBodyException"
+                            method="updateStatusAudit(*, 'DRP', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+                        <toD id="_MoveNoBodyFile" uri="file:${header.CamelFileParent}/Exception"/>
+                    </doCatch>
+                    <doCatch id="_CatchException">
+                        <exception>java.lang.Exception</exception>
+                        <bean id="_NoBodyException"
+                            method="updateStatusAudit(*, 'ERR', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+                        <toD id="_MoveErrorFile" uri="file:${header.CamelFileParent}/ERR"/>
+                    </doCatch>
+                </doTry>
+            </otherwise>
+        </choice>
+    </route>
+    <route id="_Process_NRat">
+        <from id="_InputNRatFile" uri="direct:NRAT"/>
+        <bean id="_CheckValidationForNRat"
+            method="processFormat(*, 'R')" ref="procFormat"/>
+        <marshal id="_TransformNRat">
+            <bindy
+                classType="com.targetatom.ktds.dao.kr.output.KRResultFormat"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <convertBodyTo charset="ISO-8859-1" id="_ConvertEncodingRater" type="java.lang.String"/>
+        <recipientList id="_SendToDistributor">
+            <method
+                method="sendToDistributor(${header.file.targetDirectory}, ${file:onlyname.noext}_0_001.${file:ext})" ref="auditHandler"/>
+        </recipientList>
+        <bean id="_InsertAudit"
+            method="insertAudit(*, 'MZN', ${file:onlyname.noext}_0_001.${file:ext}, 'RD', 'PRC_KR', ${header.file.total.count}, ${header.file.error.count}, ${header.file.success.count})" ref="auditHandler"/>
+    </route>
+    <route id="_Process_DropFile">
+        <from id="_InputDropFile" uri="direct:DROP"/>
+        <bean id="_CheckValidationForDrop"
+            method="processFormat(*, 'E')" ref="procFormat"/>
+        <marshal id="_TransformDrop">
+            <bindy
+                classType="com.targetatom.ktds.dao.kr.output.KRErrorFormat"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <recipientList id="_MoveToDrop">
+            <simple>file:/home/WRK/ARCH/${date:now:yyyyMMdd}/IPTVKR/${header.targetNeId}/PRC/DRP</simple>
+        </recipientList>
+    </route>
+</routes>-->

@@ -1,0 +1,153 @@
+def label = "canary-test-${UUID.randomUUID().toString()}"
+def service-account = "jenkins-uq"
+
+def notifyStarted() {
+    mattermostSend color: 'good', message: "STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+}
+
+def notifySuccessful(message) {
+    mattermostSend color: 'good', message: "SUCCEED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+def notifyFailed(message) {
+  mattermostSend color: 'danger', message: "FAILED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+podTemplate(label: label, serviceAccount: service-account,
+	containers: [
+		containerTemplate(name: 'docker', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/docker:stable', ttyEnabled: true, command: 'cat'),
+		containerTemplate(name: 'oc', image: 'ktis-bastion01.container.ipc.kt.com:5000/openshift3/ose-cli:latest', command: 'cat', ttyEnabled: true),
+		containerTemplate(name: 'curl-jq', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/alpine-curl-jq-millet:1.0', command: 'cat', ttyEnabled: true),
+		containerTemplate(name: 'jnlp', image: 'ktis-bastion01.container.ipc.kt.com:5000/jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}')
+	],
+	volumes: [hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock')]
+	) {
+	
+	node(label) {
+		try {
+
+			notifyStarted()
+		  
+			def buildStart	
+			def buildEnd
+
+			def autoCancelled = false
+			//groovy shell is not applicabable pipe execution, so need temp file
+			def tempFile="${UUID.randomUUID().toString()}.out"
+			def tempFile2="${UUID.randomUUID().toString()}.out"
+
+			sh "echo ${params.branchName}>${tempFile}"
+			
+			def branchName
+			sh "sed -i s#origin/##g ${tempFile}"
+			branchName=readFile("${tempFile}")
+			branchName=branchName.trim()
+
+			def milestone
+			milestone=params.version
+	  
+			stage('Get Source') {
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				git url: "http://10.217.59.20/coe-istio-master/msa-bunker.git",
+					credentialsId: 'git-credentials',
+					branch: "${branchName}"
+					
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+	  
+			def props = readProperties  file:'devops/pipeline-canary.properties'
+			def namespace = props['namespace']
+			def image = props['image']
+			def orginWeightPath = props['orginWeightPath']
+			def canaryWeightPath = props['canaryWeightPath']
+			def originSelector = props['originSelector']
+			def canarySelector = props['canarySelector']
+			def appName = props['appName']
+			def virtualServiceName = props['virtualServiceName']
+
+			def gitProjectUrl = props['gitProjectUrl']
+	 
+			stage('Check Milestone'){
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				container('curl-jq'){
+					withCredentials([string(credentialsId: 'gitlab-secret-token', variable: 'TOKEN')]){
+					
+						sh """
+							curl --header PRIVATE-TOKEN:$TOKEN ${gitMilestoneUrl}?state=active > ${tempFile}
+							jq -r '.[].title' ${tempFile} > ${tempFile2}
+						"""
+						result=sh returnStatus: true, script: """grep ${milestone} ${tempFile2}"""
+						if ( result != 0 ){
+							autoCancelled = true
+							error('Error MileStone(version) is not opend')
+						}
+					}
+				}
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+	 
+
+			stage( 'Deploy to Cluster' ) {
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				container('oc') {
+					sh """
+						#rolling update 
+						oc -n ${namespace} --record=true set image deployment ${canarySelector} ${appName}=${image}:${milestone}
+						oc -n ${namespace} rollout status deployment ${canarySelector}
+						#set Replicas
+						oc -n ${namespace} scale deployments ${originSelector} --replicas=${params.OriginReplicas}
+						oc -n ${namespace} scale deployments ${canarySelector} --replicas=${params.CanaryReplicas}
+
+						#set Weight
+						oc -n ${namespace} patch virtualservice ${virtualServiceName} --type json -p '[{"op": "replace", "path": ${orginWeightPath}, "value":${params.OriginWeight} },
+							{"op": "replace", "path": ${canaryWeightPath}, "value":${params.CanaryWeight} }]'
+             	
+					"""
+				}
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+
+			stage( 'Image Inspection' ) {
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				sh "echo 'Image Inspection'"
+				
+				buildEnd= sh returnStdout: true, script: 'date'
+				buildMessage="${buildMessage}***\n"
+				buildMessage="${buildMessage}${env.STAGE_NAME}\n"
+				buildMessage="${buildMessage}Start Time: ${buildStart}\n"
+				buildMessage="${buildMessage}End Time: ${buildEnd}\n"
+				buildMessage="${buildMessage}***\n"
+			}
+	  
+			notifySuccessful()
+		} catch(e) {
+			buildMessage="$buildMessage **Error :: "+ e.toString()+"**"
+			
+			currentBuild.result = "FAILED"
+			notifyFailed(buildMessage)
+		}
+	}
+}

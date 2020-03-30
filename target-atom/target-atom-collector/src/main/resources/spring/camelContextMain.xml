@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:camel="http://camel.apache.org/schema/spring"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans               http://www.springframework.org/schema/beans/spring-beans.xsd                     http://camel.apache.org/schema/spring                           http://camel.apache.org/schema/spring/camel-spring.xsd">
+    <import resource="classpath:spring/bean/bean-define.xml"/>
+    <camelContext id="camelContext-88f1f7ae-a8d5-4ce4-930e-26e679a16dfc" xmlns="http://camel.apache.org/schema/spring">
+        <propertyPlaceholder id="properties" location="application.properties"/>
+        <!-- <threadPoolProfile defaultProfile="true" id="threadProfile"
+            poolSize="1000" maxPoolSize="5000" maxQueueSize="3000" rejectedPolicy="Abort"/> -->
+        <!-- <onException>
+			<exception>java.lang.Exception</exception>
+			<continued>
+				<constant>true</constant>
+			</continued>
+			<log message="camel onexception"/>
+		</onException> -->
+        <!-- <errorHandler id="myErrorHandler" type="LoggingErrorHandler"/> -->
+    </camelContext>
+</beans>

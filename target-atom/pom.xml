@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.1.8.RELEASE</version>
+	</parent>
+
+	<groupId>com.ktds</groupId>
+	<artifactId>target-atom</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+	<name>target-atom</name>
+	<description>target-atom Parent Project</description>
+
+	<modules>
+		<module>target-atom-common</module>
+		<module>target-atom-collector</module>
+		<module>target-atom-dataformat</module>
+		<module>target-atom-jdbc</module>
+		<module>target-atom-processor</module>
+	</modules>
+
+	<properties>
+		<target-atom-version>0.0.1-SNAPSHOT</target-atom-version>
+		<java.version>1.8</java.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<drools.version>7.28.0.Final</drools.version>
+		<camel.version>2.23.2</camel.version>
+<!-- 		<camel.version>2.25.0</camel.version> -->
+		<javax.xml.soap-api.version>1.4.0</javax.xml.soap-api.version>
+		<cxf-rt-transports-http-jetty.version>3.3.1</cxf-rt-transports-http-jetty.version>
+		<log4j.version>1.2.17</log4j.version>
+		<javax.activation.version>1.1.1</javax.activation.version>
+		<commons-csv.version>1.7</commons-csv.version>
+		<targetline.version>0.0.1-SNAPSHOT</targetline.version>
+		<dbcp2.version>2.5.0</dbcp2.version>
+		<log4jdbc.version>1.16</log4jdbc.version>
+		<postgresql.version>42.2.5</postgresql.version>
+		<groovy.version>2.5.7</groovy.version>
+		<groovy-eclipse-compiler.version>2.9.1-01</groovy-eclipse-compiler.version>
+		<groovy-eclipse-batch.version>2.5.7-01</groovy-eclipse-batch.version>
+		<common-collections.version>4.3</common-collections.version>
+		<commons-collections.version>3.2.2</commons-collections.version>
+		<lombok.version>1.18.8</lombok.version>
+		<h2database.version>1.4.200</h2database.version>
+		<cxf-spring-boot-starter-jaxws.version>3.3.2</cxf-spring-boot-starter-jaxws.version>
+		<cxf-xjc-runtime.version>3.3.0</cxf-xjc-runtime.version>
+	</properties>
+
+<!-- 	<repositories> -->
+<!-- 		<repository> -->
+<!-- 			<releases> -->
+<!-- 				<enabled>true</enabled> -->
+<!-- 			</releases> -->
+<!-- 			<id>central</id> -->
+<!-- 			<url>http://10.217.59.89/nexus3/repository/public/</url> -->
+<!-- 		</repository> -->
+<!-- 		<repository> -->
+<!-- 			<releases> -->
+<!-- 				<enabled>true</enabled> -->
+<!-- 			</releases> -->
+<!-- 			<id>jboss</id> -->
+<!-- 			<url>http://10.217.59.89/nexus3/repository/public/</url> -->
+<!-- 		</repository> -->
+<!-- 	</repositories> -->
+<!-- 	<pluginRepositories> -->
+<!-- 		<pluginRepository> -->
+<!-- 			<releases> -->
+<!-- 				<enabled>true</enabled> -->
+<!-- 			</releases> -->
+<!-- 			<id>central</id> -->
+<!-- 			<url>http://10.217.59.89/nexus3/repository/public/</url> -->
+<!-- 		</pluginRepository> -->
+<!-- 		<pluginRepository> -->
+<!-- 			<releases> -->
+<!-- 				<enabled>true</enabled> -->
+<!-- 			</releases> -->
+<!-- 			<id>jboss</id> -->
+<!-- 			<url>http://10.217.59.89/nexus3/repository/public/</url> -->
+<!-- 		</pluginRepository> -->
+<!-- 	</pluginRepositories> -->
+	<build>
+		<defaultGoal>compile</defaultGoal>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>3.1.2</version>
+					<configuration>
+						<archive>
+							<manifest>
+								<!-- <mainClass>${start-class}</mainClass> -->
+							</manifest>
+						</archive>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<configuration>
+						<compilerId>groovy-eclipse-compiler</compilerId>
+						<source>${java.version}</source>
+						<target>${java.version}</target>
+					</configuration>
+					<dependencies>
+						<dependency>
+							<groupId>org.codehaus.groovy</groupId>
+							<artifactId>groovy-eclipse-compiler</artifactId>
+							<version>${groovy-eclipse-compiler.version}</version>
+						</dependency>
+						<dependency>
+							<groupId>org.codehaus.groovy</groupId>
+							<artifactId>groovy-eclipse-batch</artifactId>
+							<version>${groovy-eclipse-batch.version}</version>
+						</dependency>
+					</dependencies>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<configuration>
+						<encoding>UTF-8</encoding>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-eclipse-plugin</artifactId>
+					<version>2.10</version>
+					<configuration>
+						<downloadSources>true</downloadSources>
+						<downloadJavadocs>true</downloadJavadocs>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<configuration>
+						<skipTests>true</skipTests>
+					</configuration>
+				</plugin>
+				<!--This plugin's configuration is used to store Eclipse m2e settings 
+					only. It has no influence on the Maven build itself. -->
+				<plugin>
+					<groupId>org.eclipse.m2e</groupId>
+					<artifactId>lifecycle-mapping</artifactId>
+					<version>1.0.0</version>
+					<configuration>
+						<lifecycleMappingMetadata>
+							<pluginExecutions>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>
+											org.apache.maven.plugins
+										</groupId>
+										<artifactId>
+											maven-compiler-plugin
+										</artifactId>
+										<versionRange>
+											[3.8.1,)
+										</versionRange>
+										<goals>
+											<goal>testCompile</goal>
+											<goal>compile</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<ignore></ignore>
+									</action>
+								</pluginExecution>
+							</pluginExecutions>
+						</lifecycleMappingMetadata>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+</project>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes id="fileCopyRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="INTKT_Router">
+        <from id="_FileInput" uri="direct:source"/>
+        <!-- <doTry id="_CheckException"> -->
+        <log id="_StartLog" loggingLevel="WARN" message=">>>>>> Start Time"/>
+        <!-- <bean id="_UpdateAuditProcess"
+            method="updateStatusAudit(*, 'IU', 'MZN', 'PRC_')" ref="auditHandler"/>-->
+        <bean id="_AuditCheck" method="selectTarget" ref="auditHandler"/>
+        <!-- <transform id="_transform1">
+            <method method="setRecordStructure" ref="intKTTransformer"/>
+        </transform> -->
+        <log id="_TransformLog" loggingLevel="WARN" message=">>>>>> Transform Time"/>
+        <unmarshal id="_FileParsing">
+            <bindy classType="com.ktds.targetatom.cdr.intkt.INTKTBody"
+                locale="korea" type="Fixed"/>
+        </unmarshal>
+        <!-- <bean id="_UpdateAuditParsing"
+            method="updateAudit(*, 'CO', 'MZN', 'PRC_KR', 0, 0, 0)" ref="auditHandler"/>-->
+        <log id="_UnMarshalLog" loggingLevel="WARN" message=">>>>>> UnMarshal Time"/>
+        <bean id="_validateParsing" method="droolsExecution" ref="droolsExecutor"/>
+        <multicast id="_FileDistributor" parallelProcessing="false">
+            <toD id="_ProcessNRat" uri="direct:NRAT"/>
+            <toD id="_ProcessDrop" uri="direct:DROP"/>
+        </multicast>
+        <!-- <doCatch id="_CatchException">
+                <exception>java.lang.IllegalArgumentException</exception>
+                <bean id="_NoBodyException"
+                    method="updateStatusAudit(*, 'DRP', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+                <toD id="_MoveNoBodyFile" uri="file:${header.CamelFileParent}/Exception"/>
+            </doCatch>
+            <doCatch id="_CatchException">
+                <exception>java.lang.Exception</exception>
+                <bean id="_NoBodyException"
+                    method="updateStatusAudit(*, 'ERR', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+                <toD id="_MoveErrorFile" uri="file:${header.CamelFileParent}/ERR"/>
+            </doCatch>
+        </doTry>-->
+    </route>
+    <route id="_Process_NRat">
+        <from id="_InputNRatFile" uri="direct:NRAT"/>
+        <bean id="blankremove1" method="recordTrim(*, 'INTKTResultCdr')" ref="droolsExecutor"/>
+        <marshal id="_TransformNRat">
+            <bindy classType="com.ktds.targetatom.cdr.intkt.INTKTResultCdr"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <log id="_MarshalLog" loggingLevel="WARN" message=">>>>>> Marshal Time"/>
+        <recipientList id="_SendToDistributor">
+            <method
+                method="sendToDistributor(${header.file.targetDirectory}, ${file:onlyname.noext}_0_001.${file:ext})" ref="auditHandler"/>
+        </recipientList>
+        <!--    <bean id="_InsertAudit"
+            method="insertAudit(*, 'MZN', ${file:onlyname.noext}_0_001.${file:ext}, 'RD', 'PRC_KR', ${header.file.total.count}, ${header.file.error.count}, ${header.file.success.count})" ref="auditHandler"/>-->
+        <log id="_EndLog" loggingLevel="WARN" message=">>>>>> End Time"/>
+        <log id="_logNRat" loggingLevel="WARN" message="Rat finished Time"/>
+    </route>
+    <route id="_Process_DropFile">
+        <from id="_InputDropFile" uri="direct:DROP"/>
+        <bean id="blankremove2" method="recordTrim(*, 'INTKTErrorCdr')" ref="droolsExecutor"/>
+        <marshal id="_TransformDrop">
+            <bindy classType="com.ktds.targetatom.cdr.intkt.INTKTErrorCdr"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <recipientList id="_MoveToDrop">
+            <simple>file:/home/WRK/ARCH/${date:now:yyyyMMdd}/INTKT/PRC/DRP</simple>
+        </recipientList>
+        <log id="_logDrop" loggingLevel="WARN" message="Drop finished Time"/>
+    </route>
+</routes>

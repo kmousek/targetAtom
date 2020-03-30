@@ -1,0 +1,127 @@
+def label = "uq_uq-summary-${UUID.randomUUID().toString()}"
+def serviceAccount = "jenkins-uq"
+def serviceName = "uq-summary"
+
+def notifyStarted() {
+    mattermostSend color: 'good', message: "STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+}
+
+def notifySuccessful(message) {
+    mattermostSend color: 'good', message: "SUCCEED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+def notifyFailed(message) {
+  mattermostSend color: 'danger', message: "FAILED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+
+String getBranchName(branch) {
+  branchTemp=sh returnStdout:true ,script:"""echo "$branch" |sed -E "s#origin/##g" """
+  if(branchTemp){
+    branchTemp=branchTemp.trim()
+  }
+  return branchTemp
+}
+
+String parsingBranchString(branch) {
+  branchTemp= sh returnStdout:true, script:"""echo ${branch}|sed -E "s/^release-//g"|sed -E "s/[0-9]+\\.[0-9]+\\.[0-9]+//g" """
+  if(branchTemp){
+    branchTemp = branchTemp.trim()
+					}
+  return branchTemp
+}
+
+podTemplate(label: label, serviceAccount: serviceAccount, 
+	containers: [
+		containerTemplate(name: 'curl-jq', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/alpine-curl-jq-millet:1.0', command: 'cat', ttyEnabled: true,
+			resourceRequestCpu: "10m", resourceLimitCpu: "10m", resourceRequestMemory: "10Mi",  resourceLimitMemory: "10Mi"),
+		containerTemplate(name: 'oc', image: 'ktis-bastion01.container.ipc.kt.com:5000/openshift3/ose-cli:latest', command: 'cat', ttyEnabled: true,
+			resourceRequestCpu: "10m", resourceLimitCpu: "100m", resourceRequestMemory: "50Mi", resourceLimitMemory: "100Mi"),
+		containerTemplate(name: 'jnlp', image: 'ktis-bastion01.container.ipc.kt.com:5000/jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}',
+			resourceRequestCpu: "100m", resourceLimitCpu: "200m", resourceRequestMemory: "100Mi", resourceLimitMemory: "300Mi")
+	],
+	volumes: [
+	    hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
+        persistentVolumeClaim(mountPath: '/home/jenkins', claimName: 'jenkins-slave-pvc', readOnly: false)
+	    ]
+	) {
+	
+	node(label) {
+		try {
+			//notifyStarted()
+
+			def autoCancelled = false
+			
+			def branchTemp
+			//branch Name Parsing
+			branchTemp = params.branchName
+
+			branchName=getBranchName(branchTemp)
+			
+			def milestone
+			milestone=params.version
+			  
+			//null check 
+			if(!branchName || !milestone){
+				throw new Exception("Value is null")
+			}
+			
+			stage('Get Source') {
+				git url: "http://10.217.59.20/usage-query/usage-query.git",
+					credentialsId: 'git-credentials',
+					branch: "${branchName}"
+			}
+			def props = readProperties  file:'devops/' + serviceName + '/pipelineCDDeploy.properties'
+			def image = props['image']
+			def selector = props['selector']
+			def namespace = props['namespace']
+			def appname = props['appname']
+			def gitProjectUrl = props['gitProjectUrl']
+			
+			//null check 
+			if(!image || !selector|| !namespace || !appname || !gitProjectUrl){
+				throw new Exception("Value is null")
+			}
+			
+			stage('Check Milestone'){
+				container('curl-jq'){
+					withCredentials([string(credentialsId: 'gitlab-secret-token', variable: 'TOKEN')]){		
+						
+						result = sh returnStdout:true, script: """curl --header PRIVATE-TOKEN:$TOKEN ${gitProjectUrl}/milestones?state=active | jq -r '.[].title' | grep ${milestone} | wc -l"""
+						result = result.toInteger()
+						
+						if ( result == 0 ){
+						   autoCancelled = true
+						   error('Error MileStone(version) is not opend')
+						}
+					}
+				}
+			}
+
+			stage( 'Deploy to Cluster' ) {
+				container('oc') {
+					// making selector
+					def parsingSelector= parsingBranchString(branchName)
+	
+					if ( parsingSelector.equals("") | parsingSelector.equals("master") ) {
+					}
+					else {
+					     selector=selector+ "-" + parsingSelector
+					}
+					
+					/* rolling update */
+					sh "oc -n ${namespace} --record=true set image deployment ${selector} ${appname}=${image}:${milestone}"
+					sh "oc -n ${namespace} rollout status deployment ${selector}"     
+				}
+			}
+				
+			//notifySuccessful()
+		} catch(e) {
+			buildMessage="**Error :: "+ e.toString()+"**"
+			print "this build cause error:" + buildMessage
+			
+			currentBuild.result = "FAILED"
+			//notifyFailed(buildMessage)
+		}	
+	}
+}

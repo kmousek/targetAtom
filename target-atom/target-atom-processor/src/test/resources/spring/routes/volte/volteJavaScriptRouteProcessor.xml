@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes id="fileCopyRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="VOLTE_Router">
+        <from id="_FileInput" uri="direct:source"/>
+        <transform id="_transform1">
+            <method method="setRecordStructure" ref="voLTETransformer"/>
+        </transform>
+        <unmarshal id="_FileParsing">
+            <bindy
+                classType="com.targetatom.ktds.dao.volte.input.VoLTEBody"
+                locale="korea" type="Fixed"/>
+        </unmarshal>
+        <to id="_validateParsing" uri="language:javascript:classpath:spring/rules/volte/volte.js"/>
+        <multicast id="_FileDistributor" parallelProcessing="false">
+            <toD id="_ProcessNRat" uri="direct:NRAT"/>
+            <toD id="_ProcessDrop" uri="mock:DROP"/>
+        </multicast>
+    </route>
+    <route id="_Process_NRat">
+        <from id="_InputNRatFile" uri="direct:NRAT"/>
+        <bean id="blankremove1"
+            method="recordTrim(*, 'VoLTEResultFormat')" ref="fileParsingProcessor"/>
+        <marshal id="_TransformNRat">
+            <bindy
+                classType="com.targetatom.ktds.dao.volte.output.VoLTEResultFormat"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <recipientList id="_SendToDistributor">
+            <method
+                method="sendToDistributor('/WRK/SND/NRAT/VOVLTE/YGIN1', ${file:onlyname.noext}_0_001.${file:ext})" ref="auditHandler"/>
+        </recipientList>
+    </route>
+</routes>

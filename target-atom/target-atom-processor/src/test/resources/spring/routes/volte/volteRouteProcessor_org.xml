@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes id="fileCopyRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="VOLTE_Router">
+        <!-- <bean id="_UpdateAuditProcess"
+            method="updateStatusAudit(*, 'IU', 'MZN', 'PRC_KR')" ref="auditHandler"/>-->
+        <!--  <bean id="_UpdateAuditParsing"
+            method="updateAudit(*, 'CO', 'MZN', 'PRC_KR', ${header.file.total.count}, '0', ${header.file.total.count})" ref="auditHandler"/>-->
+        <from id="_FileInput" uri="direct:source"/>
+        <log id="_StartLog" loggingLevel="WARN" message="Start Time ::: ${date:now}"/>
+        <transform id="_transform1">
+            <method method="setRecordStructure" ref="voLTETransformer"/>
+        </transform>
+        <log id="_TransformLog" loggingLevel="WARN" message="Transform End Time ::: ${date:now}"/>
+        <unmarshal id="_FileParsing">
+            <bindy
+                classType="com.targetatom.ktds.dao.volte.input.VoLTEBody"
+                locale="korea" type="Fixed"/>
+        </unmarshal>
+        <log id="_TransformLog" loggingLevel="WARN" message="Unmarshalling End Time ::: ${date:now}"/>
+        <to id="_validateParsing" uri="language:javascript:classpath:spring/rules/volte/volte.js?contentCache=true&amp;cacheScript=true"/>
+        <multicast id="_FileDistributor" parallelProcessing="false">
+            <toD id="_ProcessNRat" uri="direct:NRAT"/>
+            <toD id="_ProcessDrop" uri="direct:DROP"/>
+        </multicast>
+    </route>
+    <route id="_Process_NRat">
+        <!-- <bean id="_CheckValidationForNRat"
+            method="procFormat_testVoLTE(*, 'R')" ref="procFormat_testVoLTE"/>-->
+        <!-- <bean id="blankremove1"
+            method="recordTrim(*, 'VoLTEResultFormat')" ref="fileParsingProcessor"/> -->
+        <from id="_InputNRatFile" uri="direct:NRAT"/>
+        <marshal id="_TransformNRat">
+            <bindy classType="com.ktds.targetatom.cdr.volte.VoLTEResultCdr"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <recipientList id="_SendToDistributor">
+            <method
+                method="sendToDistributor(${header.file.targetDirectory}, ${file:onlyname.noext}_0_001.${file:ext})" ref="auditHandler"/>
+        </recipientList>
+        <log id="_EndLog" loggingLevel="WARN" message="End Time ::: ${date:now}"/>
+        <!-- <bean id="_InsertAudit"
+            method="insertAudit(*, 'MZN', ${file:onlyname.noext}_0_001.${file:ext}, 'RD', 'PRC_KR', ${header.file.total.count}, ${header.file.error.count}, ${header.file.success.count})" ref="auditHandler"/>-->
+    </route>
+    <!--  <recipientList id="_SendToDistributor">
+                <method
+                    method="insertAuditAndSendFile(*, 'MZN', ${file:onlyname.noext}_0_001.${file:ext}, 'RD', 'PRC_KR', ${header.file.total.count}, ${header.file.error.count}, ${header.file.success.count})" ref="mznDBProcessor"/>
+            </recipientList>
+    </route>-->
+    <route id="_Process_DropFile">
+        <!-- <bean id="blankremove2"
+            method="recordTrim(*, 'VoLTEErrorFormat')" ref="fileParsingProcessor"/> -->
+        <from id="_InputDropFile" uri="direct:DROP"/>
+        <marshal id="_TransformDrop">
+            <bindy classType="com.ktds.targetatom.cdr.volte.VoLTEErrorCdr"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <recipientList id="_MoveToDrop">
+            <simple>file:/WRK/ARCH/${date:now:yyyyMMdd}/VOVLTE/${header.targetNeId}/PRC/DRP</simple>
+        </recipientList>
+    </route>
+</routes>

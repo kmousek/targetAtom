@@ -1,0 +1,40 @@
+<!-- <?xml version="1.0" encoding="UTF-8"?>
+<routes id="fileCopyRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="KR_Router">
+        <from id="_FileInput" uri="direct:source"/>
+        <convertBodyTo charset="ISO-8859-1" id="_ConvertEncoding1" type="java.lang.String"/>
+        <unmarshal id="_FileParsing">
+            <bindy classType="com.targetatom.ktds.dao.kr.input.KRBody"
+                locale="korea" type="Fixed"/>
+        </unmarshal>
+        <log id="recordwrite" message="$body"/>
+        <bean id="_validateParsing"
+            method="processFormat(*, 'KRResultFormat', 'KRErrorFormat')" ref="procVolteFormat"/>
+        <multicast id="_FileDistributor" parallelProcessing="false">
+            <toD id="_ProcessNRat" uri="direct:NRAT"/>
+            <toD id="_ProcessDrop" uri="direct:DROP"/>
+        </multicast>
+    </route>
+    <route id="_Process_NRat">
+        <from id="_InputNRatFile" uri="direct:NRAT"/>
+        <bean id="blankremove1" method="recordTrim(*, 'KRResultFormat')" ref="procVolteFormat"/>
+        <marshal id="_TransformNRat">
+            <bindy
+                classType="com.targetatom.ktds.dao.kr.output.KRResultFormat"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <convertBodyTo charset="ISO-8859-1" id="_ConvertEncodingRater" type="java.lang.String"/>
+        <toD id="_CollectRat" uri="file:/home/WRK/TEST/NRAT"/>
+    </route>
+    <route id="_Process_DropFile">
+        <from id="_InputDropFile" uri="direct:DROP"/>
+        <bean id="blankremove2" method="recordTrim(*, 'KRErrorFormat')" ref="procVolteFormat"/>
+        <marshal id="_TransformDrop">
+            <bindy
+                classType="com.targetatom.ktds.dao.kr.output.KRErrorFormat"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <convertBodyTo charset="ISO-8859-1" id="_ConvertEncodingDrop" type="java.lang.String"/>
+        <toD id="_CollectDrop" uri="file:/home/WRK/TEST/DROP"/>
+    </route>
+</routes>-->

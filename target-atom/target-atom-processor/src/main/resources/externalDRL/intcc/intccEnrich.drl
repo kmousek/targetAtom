@@ -1,0 +1,723 @@
+//list any import classes here.
+import com.ktds.targetatom.cdr.intcc.INTCCBody;
+import com.ktds.targetatom.util.CommonUtils;
+import java.lang.StringBuilder;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import org.slf4j.Logger;
+import java.util.Date;
+import java.lang.Integer;
+import java.util.ArrayList;
+import java.lang.String;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import com.ktds.targetatom.bean.AuditHandler;
+import com.ktds.targetatom.vo.IntlPfixChangeBasInfo;
+
+
+//declare any global variables here
+global AuditHandler audit;
+
+function String comnPadChr(String inputString, int length, String padding, String type) {
+	inputString = inputString.trim();
+	if (inputString.length() >= length) {
+		return inputString;
+	}
+	
+	StringBuilder sb = new StringBuilder();
+	if (type.equals("L")) {
+		while (sb.length() < length - inputString.length()) {
+			sb.append(padding);
+		}
+		sb.append(inputString);
+	} else {
+		sb.append(inputString);
+		while (sb.length() < length) {
+			sb.append(padding);
+		}
+	}
+	return sb.toString();
+}
+
+function String comnStrTrim(String inputString) {
+ 
+	if (inputString == null || inputString.equals("")){
+		return "";
+	}
+		
+	return inputString.trim();
+}
+
+
+function String wlssEditTelNo(String sTelNo, int iLen) {
+
+    int MAX_KTF_CTN_LENGTH  = 12;
+    int iLength = 0;
+    
+    if (sTelNo == null || sTelNo.equals("") || sTelNo == "") return "";
+
+    if (iLen == MAX_KTF_CTN_LENGTH - 1) {
+
+        iLength = CommonUtils.strREIndexOf(sTelNo + "a"); 
+        
+        //sTelNo = strSubstring (sTelNo, 0, iLength); 
+        sTelNo = sTelNo.substring(0, iLength); 
+
+        //if (iLength == MAX_KTF_CTN_LENGTH) return strSubstring (sTelNo, 1, iLength);
+        if (iLength == MAX_KTF_CTN_LENGTH) return sTelNo.substring(1, iLength);
+        
+
+        else if (iLength == MAX_KTF_CTN_LENGTH - 1) {
+            //string sTelNoStart = strSubstring(sTelNo, 0, 3);
+            String sTelNoStart = sTelNo.substring(0, 3);
+
+            //if (sTelNoStart == "010" || sTelNoStart == "011" ||  sTelNoStart == "012" || 
+            //    sTelNoStart == "016" || sTelNoStart == "017" || 
+            //    sTelNoStart == "018" || sTelNoStart == "019") {
+            //    return sTelNo;
+            //}
+            
+            if (sTelNoStart.equals("010") || sTelNoStart.equals("011") ||  sTelNoStart.equals("012") || 
+                sTelNoStart.equals("016") || sTelNoStart.equals("017") || 
+                sTelNoStart.equals("018") || sTelNoStart.equals("019")) {
+                return sTelNo;
+            }
+
+            else {
+                //return strSubstring (sTelNo, 1, 4) + "0" + strSubstring (sTelNo, 4, iLength);
+                return sTelNo.substring(1, 4) + "0" + sTelNo.substring(4, iLength);
+            }
+        }
+
+        else if (iLength == 10) {
+            //return strSubstring (sTelNo, 0, 3) + "0" + strSubstring (sTelNo, 3, iLength);
+            return sTelNo.substring(0, 3) + "0" + sTelNo.substring(3, iLength);
+        }
+        else return "";
+    }
+
+    else if (iLen == MAX_KTF_CTN_LENGTH - 2) {
+
+        iLength = CommonUtils.strREIndexOf(sTelNo + "a"); 
+        //sTelNo = strSubstring (sTelNo, 0, iLength);
+		sTelNo = sTelNo.substring(0, iLength);
+		
+        //if (iLength == MAX_KTF_CTN_LENGTH && strStartsWith (sTelNo, "0")) {
+        if (iLength == MAX_KTF_CTN_LENGTH && sTelNo.startsWith("0")) {
+
+            //string sTelNoTwoWith = strSubstring(sTelNo, 1, 4);
+            String sTelNoTwoWith = sTelNo.substring(1, 4);
+
+            //if (sTelNoTwoWith == "060") {
+            if (sTelNoTwoWith.equals("060")) {
+
+                //if (strSubstring (sTelNo, 4, 5) == "0") {
+                //    return strSubstring (sTelNo, 1, 4) + strSubstring (sTelNo, 5, iLength);
+                //}
+                if (sTelNo.substring(4, 5).equals("0")) {
+                    return sTelNo.substring(1, 4) + sTelNo.substring(5, iLength);
+                }
+              
+                //else return strSubstring (sTelNo, 1, iLength);
+                else return sTelNo.substring(1, iLength);
+            }
+
+            //if (sTelNoTwoWith == "010" || sTelNoTwoWith == "011" ||  sTelNoTwoWith == "012" || 
+            //    sTelNoTwoWith == "016" || sTelNoTwoWith == "017" || 
+            //    sTelNoTwoWith == "018" || sTelNoTwoWith == "019") {
+            //    return strSubstring (sTelNo, 1, iLength);
+            //}
+            if (sTelNoTwoWith.equals("010") || sTelNoTwoWith.equals("011") ||  sTelNoTwoWith.equals("012") || 
+                sTelNoTwoWith.equals("016") || sTelNoTwoWith.equals("017") || 
+                sTelNoTwoWith.equals("018") || sTelNoTwoWith.equals("019")) {
+                return sTelNo.substring(1, iLength);
+            }
+
+            else {
+                return sTelNo;
+            }
+        }
+
+        else if (iLength == 12) return sTelNo;
+        else return "";
+    }
+    else return "";
+}
+
+
+function boolean comnCheckDateLen(String sInDate, String sDateFmt) {
+
+	boolean bReturn = true;
+	int iDateLen = sInDate.length();
+	int iFmtLen = sDateFmt.length();
+	
+	if (iDateLen != iFmtLen) bReturn = false;
+	
+	return bReturn;
+}
+
+
+function String comnChangeDateFmt(String sDateFmt) {
+
+    //if (sDateFmt == null || strTrim (sDateFmt) == "" ) return "";
+    if (sDateFmt == null || sDateFmt.equals("") || sDateFmt.trim() == "" || sDateFmt.trim().equals("")) return "";
+
+    int iLength = sDateFmt.length();
+    
+    if (iLength < 4) return "";
+
+    //sDateFmt = strToLower(strTrim (sDateFmt));
+    sDateFmt = sDateFmt.trim().toLowerCase();
+    //string sDateFmtStart = strSubstring(sDateFmt, 0, 4);
+    String sDateFmtStart = sDateFmt.substring(0, 4);
+
+
+    //if (sDateFmtStart == "yyyy") {
+    if (sDateFmtStart.equals("yyyy")) {
+
+        if (iLength == 4) return sDateFmt;
+        if (iLength == 6) {
+
+            //if (sDateFmt == "yyyymm") sDateFmt = "yyyyMM";
+            if (sDateFmt.equals("yyyymm")) sDateFmt = "yyyyMM";
+            else return "";
+
+        } else if (iLength == 8) {
+
+            //if (sDateFmt == "yyyymmdd") sDateFmt = "yyyyMMdd";
+            if (sDateFmt.equals("yyyymmdd")) sDateFmt = "yyyyMMdd";
+            else return "";
+
+        } else if (iLength == 10) {
+
+            //if (sDateFmt == "yyyymmddhh") sDateFmt = "yyyyMMddHH";
+            if (sDateFmt.equals("yyyymmddhh")) sDateFmt = "yyyyMMddHH";
+            else return "";
+
+        } else if (iLength == 12) { 
+
+            //if (sDateFmt == "yyyymmddhhmm") sDateFmt = "yyyyMMddHHmm";
+            if (sDateFmt.equals("yyyymmddhhmm")) sDateFmt = "yyyyMMddHHmm";
+            else return "";
+
+        } else if (iLength == 14) {
+
+            //if (sDateFmt == "yyyymmddhhmmss") sDateFmt = "yyyyMMddHHmmss";
+            if (sDateFmt.equals("yyyymmddhhmmss")) sDateFmt = "yyyyMMddHHmmss";
+            else return "";
+
+        } else if (iLength == 15) { 
+
+            //if (sDateFmt == "yyyymmddhhmmsst" || sDateFmt == "yyyyMMddHHmmsss") sDateFmt = "yyyyMMddHHmmssSSS";
+            if (sDateFmt.equals("yyyymmddhhmmsst") || sDateFmt.equals("yyyyMMddHHmmsss")) sDateFmt = "yyyyMMddHHmmssSSS";
+            else return "";
+
+        } else if (iLength == 16) {
+
+            //if (sDateFmt == "yyyymmddhhmmsstt" || sDateFmt == "yyyymmddhhmmssss") sDateFmt = "yyyyMMddHHmmssSSS";
+            if (sDateFmt.equals("yyyymmddhhmmsstt") || sDateFmt.equals("yyyymmddhhmmssss")) sDateFmt = "yyyyMMddHHmmssSSS";
+            else return "";
+            
+        } else if (iLength == 17) {
+
+            //if (sDateFmt == "yyyymmddhhmmsssss") sDateFmt = "yyyyMMddHHmmssSSS";
+            if (sDateFmt.equals("yyyymmddhhmmsssss")) sDateFmt = "yyyyMMddHHmmssSSS";
+            else return "";
+            
+        } else return "";
+
+   //} else if (sDateFmtStart == "mmdd") {
+	} else if (sDateFmtStart.equals("mmdd")) {
+	
+        if (iLength == 4) sDateFmt = "MMdd";
+        else if (iLength == 6) {
+
+            //if (sDateFmt == "mmddhh") sDateFmt = "MMddHH";
+            if (sDateFmt.equals("mmddhh")) sDateFmt = "MMddHH";
+            else return "";
+
+        } else if (iLength == 8) {
+
+            //if (sDateFmt == "mmddhhmm") sDateFmt = "MMddHHmm";
+            if (sDateFmt.equals("mmddhhmm")) sDateFmt = "MMddHHmm";
+            else return "";
+            
+        } else if (iLength == 10) {
+
+            //if (sDateFmt == "mmddhhmmss") sDateFmt = "MMddHHmmss";
+            if (sDateFmt.equals("mmddhhmmss")) sDateFmt = "MMddHHmmss";
+            else return "";
+
+        } else if (iLength == 11) { 
+
+            //if (sDateFmt == "mmddhhmmsst" || sDateFmt == "mmddhhmmsss") sDateFmt = "MMddHHmmssSSS";
+            if (sDateFmt.equals("mmddhhmmsst") || sDateFmt.equals("mmddhhmmsss")) sDateFmt = "MMddHHmmssSSS";
+            else return "";
+
+        } else if (iLength == 12) {
+
+			//if (sDateFmt == "mmddhhmmsstt" || sDateFmt == "mmddhhmmssss") sDateFmt = "MMddHHmmssSSS";
+            if (sDateFmt.equals("mmddhhmmsstt") || sDateFmt.equals("mmddhhmmssss")) sDateFmt = "MMddHHmmssSSS";
+            else return "";
+
+        } else if (iLength == 13) {
+
+            //if (sDateFmt == "mmddhhmmsssss") sDateFmt = "MMddHHmmssSSS";
+            if (sDateFmt.equals("mmddhhmmsssss")) sDateFmt = "MMddHHmmssSSS";
+            else return "";
+
+        } else return "";
+
+    //} else if (sDateFmtStart == "hhmm") {
+    } else if (sDateFmtStart.equals("hhmm")) {  
+
+        if (iLength == 4) sDateFmt = "HHmm";
+        else if (iLength == 6) {
+
+            //if (sDateFmt == "hhmmss") sDateFmt = "HHmmss";
+            if (sDateFmt.equals("hhmmss")) sDateFmt = "HHmmss";
+            else return "";
+
+        } else if (iLength == 7) {
+
+            //if (sDateFmt == "hhmmsst" || sDateFmt == "hhmmsss") sDateFmt = "HHmmssSSS";
+            if (sDateFmt.equals("hhmmsst") || sDateFmt.equals("hhmmsss")) sDateFmt = "HHmmssSSS";
+            else return "";
+
+        } else if (iLength == 8) {
+
+            //if (sDateFmt == "hhmmsstt" || sDateFmt == "hhmmssss") sDateFmt = "HHmmssSSS";
+            if (sDateFmt.equals("hhmmsstt") || sDateFmt.equals("hhmmssss")) sDateFmt = "HHmmssSSS";
+            else return "";
+
+        } else if (iLength == 9) { 
+
+            //if (sDateFmt == "hhmmsssss") sDateFmt = "HHmmssSSS";
+            if (sDateFmt.equals("hhmmsssss")) sDateFmt = "HHmmssSSS";
+            else return "";
+
+        } else return "";
+
+    //} else if (sDateFmtStart == "sstt" || sDateFmtStart == "ssss") {
+    } else if (sDateFmtStart.equals("sstt") || sDateFmtStart.equals("ssss")) {  
+        sDateFmt = "ssSSS";
+    }
+    return sDateFmt;
+}
+
+
+
+function String comnSystemDate(String sDateFmt) {
+
+    String sDate, sFmtNew;
+
+    if (sDateFmt == null || sDateFmt == "" || sDateFmt.equals("")) sDateFmt = "yyyyMMdd";
+
+    sFmtNew = comnChangeDateFmt(sDateFmt);
+
+    if (sFmtNew == "" || sFmtNew.equals("")) return "";
+    
+    //dateToString (sDate, dateCreateNow() , sFmtNew);    
+    DateFormat chgFormat = new SimpleDateFormat(sFmtNew);
+    Date nowDate = new Date();
+    sDate = chgFormat.format(nowDate);
+
+    return sDate;
+
+}
+
+
+function boolean comnFindLeapYear(int iYear) {
+
+    if ((iYear % 4 == 0 && iYear % 100 != 0) || (iYear % 400 == 0)) {
+    
+        return true ;
+
+    } else {
+    
+        return false;
+    }
+
+}
+
+function boolean comnCheckDay(int iYear, int iMonth, int iDay)  {
+
+    if (iMonth == 1 || iMonth == 3  || iMonth == 5 || iMonth == 7 || 
+        iMonth == 8 || iMonth == 10 || iMonth == 12 ) {
+
+        if ( !(iDay >= 1 && iDay <= 31) ) {
+            return false;
+        }
+    }
+
+    else if (iMonth == 4 || iMonth == 6 || iMonth == 9 || iMonth == 11 ) {
+
+        if ( !(iDay >= 1 && iDay <= 30) ) {
+
+            return false;
+        }
+    }
+    else if (iMonth == 2) {
+
+        if (comnFindLeapYear(iYear)) {
+            if ( !(iDay >= 1 && iDay <= 29) ) {
+
+                return false;
+            }
+
+        } else {
+
+            if ( !(iDay >= 1 && iDay <= 28) ) {
+
+                return false;
+            }
+        }
+    }
+    return true;
+
+}
+
+
+function boolean comnCheckDateTime(int iYear, int iMonth, int iDay, int iHour, int iMinute, int iSecond) {
+
+    if ( !(iYear >= 1970 && iYear <= 2069 ) ){
+
+        return false;
+
+    } else if ( !(iMonth >= 1 && iMonth <= 12 ) ){
+
+        return false;
+
+    } else if ( !(comnCheckDay(iYear, iMonth, iDay)) ){
+
+        return false;
+
+    } else if ( !(iHour >= 0 && iHour <= 23 ) ){
+
+        return false;
+
+    } else if ( !(iMinute >= 0 && iMinute <= 59 ) ){
+
+        return false;
+
+    } else if ( !(iSecond >= 0 && iSecond <= 59 ) ){
+
+        return false;
+
+    } else {
+    
+        return true;
+    }
+}
+
+function long comnTransMilliSecond(int iYear, int iMonth, int iDay, int iHour, int iMinute, int iSecond) {
+
+    long lTime = 0;
+
+    if ( !(comnCheckDateTime(iYear, iMonth, iDay, iHour, iMinute, iSecond)) ){
+        return -1 ;
+    }
+
+    // Take leap year into account
+    if(comnFindLeapYear(iYear) && iMonth > 2) {
+
+        lTime = lTime + (24 * 3600);
+
+    }
+
+    // Calculate number of seconds in each year from 1970 until previous year (not including 'year')
+    iYear = iYear - 1;
+    
+    while(iYear >= 1970) {
+        if(comnFindLeapYear(iYear)) {
+
+            lTime = lTime + (366 * 24 * 3600);
+
+        } else {
+
+            lTime = lTime + (365 * 24 * 3600);
+
+        }
+
+        iYear = iYear - 1;
+    }
+
+    // Calculate seconds in previous months passed this year
+    // Add January
+    if (iMonth-1 == 1)
+        lTime = lTime + 2678400;
+
+    // Add February
+    else if(iMonth-1 == 2)
+        lTime = lTime + 5097600;
+
+    // Add March
+    else if(iMonth-1 == 3)
+        lTime = lTime + 7776000;
+
+    // Add April
+    else if(iMonth-1 == 4)
+        lTime = lTime + 10368000;
+
+    // Add May
+    else if(iMonth-1 == 5)
+        lTime = lTime + 13046400;
+
+    // Add June
+    else if(iMonth-1 == 6)
+        lTime = lTime + 15638400;
+
+    // Add July
+    else if(iMonth-1 == 7)
+        lTime = lTime + 18316800;
+        
+    // Add August
+    else if(iMonth-1 == 8)
+        lTime = lTime + 20995200;
+
+    // Add Septemberä��
+    else if(iMonth-1 == 9)
+        lTime = lTime + 23587200;
+
+    // Add October
+    else if(iMonth-1 == 10)
+        lTime = lTime + 26265600;
+
+    // Add November
+    else if(iMonth-1 == 11)
+        lTime = lTime + 28857600;
+        
+    // Calculate seconds passed in supplied month
+    lTime = lTime + ((iDay-1) * 24 * 3600);
+    lTime = lTime + iHour * 3600;
+    lTime = lTime + iMinute * 60;
+    lTime = lTime + iSecond;
+
+    // Convert to milliseconds
+    lTime = lTime * 1000;
+
+    return lTime;   
+
+}
+
+
+
+function String comnCheckDate(String sInDate, String sDateFmt) {  
+
+
+    String sDateFmtNew = "";
+    String sReturnDate = "";
+    long   lResult, lMilliSec;
+    int    iYear, iMonth, iDay, iInDate = 19700101, iInTime = 0;
+    int    iHour, iMinute, iSecond, iLength;
+
+    if (sInDate == null || sInDate == ""|| sInDate.equals("")) return null;
+
+    if (sDateFmt == "" || sDateFmt == null || sDateFmt.equals("")) sDateFmt = "yyyyMMdd"; 
+
+    //if (strIndexOf (sInDate,"[^0-9]") != -1) return null;
+    if ( sInDate.indexOf("[^0-9]") != -1 ) return null;
+
+    if (!comnCheckDateLen(sInDate, sDateFmt)) return null;
+
+    sDateFmtNew = comnChangeDateFmt(sDateFmt);
+    if (sDateFmtNew == null || sDateFmtNew.equals("")) return null; 
+
+    iLength = sInDate.length();  
+    sReturnDate = sInDate;   
+    String sDateFmtStart = CommonUtils.comnSubstring(sDateFmtNew, 0, 4);
+
+    if (sDateFmtStart == "yyyy") {
+    
+        if (iLength == 4) return sInDate;
+        //if (iLength == 6) strToInt(iInDate, (sInDate + "01")); 
+		//else strToInt(iInDate, strSubstring(sInDate, 0, 8));
+        if (iLength == 6) iInDate = Integer.parseInt(sInDate + "01");
+        else iInDate = Integer.parseInt(sInDate.substring(0, 8));
+        
+        if (iLength > 8) {
+
+            sInDate = comnPadChr(CommonUtils.comnSubstring(sInDate, 8, 14), 6, "0", "R");
+            //strToInt(iInTime, sInDate);
+            iInTime = Integer.parseInt(sInDate);
+        }
+
+    //} else if (sDateFmtStart == "MMdd") {
+    } else if (sDateFmtStart.equals("MMdd")) {
+
+        sInDate = comnSystemDate("yyyy") + sInDate;
+        
+        if (iLength == 4) {
+            //strToInt(iInDate, sInDate);
+            iInDate = Integer.parseInt(sInDate);
+            iInTime = 0;
+        } else {
+
+            //strToInt(iInDate, strSubstring(sInDate, 0, 8));
+            //strToInt(iInTime, CommonUtils.comnSubstring(sInDate, 8, 14)); 
+            iInDate = Integer.parseInt(sInDate.substring(0,8));
+            iInTime = Integer.parseInt(CommonUtils.comnSubstring(sInDate, 8, 14));
+        }
+
+    //} else if (sDateFmtStart == "HHmm") {
+    } else if (sDateFmtStart.equals("HHmm")) {
+
+        if (iLength < 6) {
+            sInDate = comnPadChr(sInDate, 6, "0", "R");
+        } else {
+            //sInDate = strSubstring(sInDate, 0, 6);
+            sInDate = sInDate.substring(0, 6);
+        }
+
+        //strToInt(iInTime, sInDate);
+        iInTime = Integer.parseInt(sInDate);
+
+    //} else if (sDateFmtStart == "mmss") {
+	} else if (sDateFmtStart.equals("mmss")) {
+	
+        //strToInt(iInTime, strSubstring(sInDate, 0, 4));
+        iInTime = Integer.parseInt(sInDate.substring(0,4));
+
+    //} else if (sDateFmtStart == "sstt" || sDateFmtStart == "ssSS") {
+    } else if (sDateFmtStart.equals("sstt") || sDateFmtStart.equals("ssSS")) {
+        return sInDate;
+
+    } else {
+        return null;
+    }
+
+    iYear = iInDate / 10000;
+    iMonth = (iInDate / 100) - (iYear*100);
+    iDay = iInDate - (iYear*10000) - (iMonth*100);
+    
+    iHour = iInTime / 10000;
+    iMinute = (iInTime / 100) - (iHour*100);
+    iSecond = iInTime - (iHour*10000) - (iMinute*100);
+    // debug ("iInDate : " + iInDate);
+    // debug ("iInTime : " + iInTime);
+    // debug ((string)iYear + "," + (string)iMonth + "," + (string)iDay + "," + (string)iHour + "," + (string)iMinute + "," + (string)iSecond );
+    
+    lMilliSec = comnTransMilliSecond(iYear, iMonth, iDay, iHour, iMinute, iSecond);
+
+    if (lMilliSec == -1) return null;
+    else return sReturnDate;
+}
+
+
+function boolean comnCheckStrLength(String sInString){
+
+    if (sInString == null || sInString.equals("")) return false;
+    
+    //if (strLength (strTrim (sInString)) == 0) return false;
+    if (sInString.trim().length() == 0) return false;
+    
+    return true;
+}
+
+
+function String wlssExtrtCarrierCd(String sPrefixCd) {
+
+    if (sPrefixCd == null || sPrefixCd == "" || sPrefixCd.equals("")) return "";
+
+    //if ( ! strStartsWith(sPrefixCd, "00") ) return "";
+    if ( !sPrefixCd.startsWith("00") ) return "";
+
+    //sPrefixCd = strSubstring (sPrefixCd, 0, strREIndexOf (sPrefixCd + "a", "[^0-9]")); //comExtrtDigit (sPrefixCd, 5);
+
+    sPrefixCd = sPrefixCd.substring(0, CommonUtils.strREIndexOf(sPrefixCd + "a"));
+
+    int iLength = sPrefixCd.length();
+    
+    if (iLength == 3) return sPrefixCd; 
+
+    else if (iLength >= 5) return sPrefixCd.substring(2, 5);
+
+    else return "";
+
+}
+
+
+
+rule "INTCC Populate" salience 50
+    dialect "mvel"
+    when
+    	$uBody : INTCCBody()
+    	eval(true)
+    then
+    
+  	// WORK.usage_call
+        $uBody.sUsageCall = "Y";
+
+        // WORK.calling_number
+        $uBody.sCallingNumber = wlssEditTelNo(CommonUtils.comnSubstring($uBody.calling_number,0, 12), 11);
+
+        // WORK.call_start_date, WORK.call_start_time, WORK.call_term_date, WORK.call_term_time
+        if( (comnCheckDate($uBody.call_start_date, "YYYYMMDD") == null) || (comnCheckDate($uBody.call_start_time, "hhmmss") == null) ||
+         	(comnCheckDate($uBody.call_start_date, "YYYYMMDD").equals("")) || (comnCheckDate($uBody.call_start_time, "hhmmss").equals("")) ) {
+            $uBody.sCallStartDate = "19700101";
+            $uBody.sCallStartTime = "000000";
+            $uBody.sCallTermDate = "19700101";
+            $uBody.sCallTermTime = "000011";
+        }
+
+
+        if( (comnCheckDate($uBody.call_term_date, "YYYYMMDD") == null) || (comnCheckDate($uBody.call_term_date, "YYYYMMDD").equals("")) ||
+         (comnCheckDate($uBody.call_term_time, "hhmmss") == null) || (comnCheckDate($uBody.call_term_time, "hhmmss").equals("")) && !$uBody.gubun1.equals("3") ) {
+            $uBody.sCallStartDate = "19700101";
+            $uBody.sCallStartTime = "000011";
+            $uBody.sCallTermDate = "19700101";
+            $uBody.sCallTermTime = "000000";
+        }
+
+        //if( $uBody.sCallStartDate != "19700101" && $uBody.call_term_date != "19700101") {
+        if( !$uBody.sCallStartDate.equals("19700101") && !$uBody.call_term_date.equals("19700101")) {
+            $uBody.sCallStartDate = $uBody.call_start_date;
+            $uBody.sCallStartTime = $uBody.call_start_time;
+            $uBody.sCallTermDate = $uBody.call_term_date;
+            $uBody.sCallTermTime = $uBody.call_term_time;
+        }
+
+        // WORK.carrier
+        if( comnCheckStrLength($uBody.intl_prefix) ){
+            $uBody.sCarrier = wlssExtrtCarrierCd($uBody.intl_prefix);
+        }
+
+        // WORK.nation_code
+        if( comnCheckStrLength($uBody.nation_code) && !$uBody.gubun1.equals("3") ){
+            $uBody.sNationCode = $uBody.nation_code;
+        }
+
+        // WORK.country_code
+        if( comnCheckStrLength($uBody.sCarrier) && comnCheckStrLength($uBody.sNationCode) && !$uBody.gubun1.equals("3") ){
+
+            IntlPfixChangeBasInfo intlPfixChangeBasInfo = audit.get_TB_INTL_PFIX_CHANGE_BAS($uBody.sCarrier, $uBody.sNationCode, $uBody.sCallStartDate+$uBody.sCallStartTime);
+
+            if( intlPfixChangeBasInfo != null ) {
+                $uBody.sCountryCode = intlPfixChangeBasInfo.sIntlPrefixCd;
+            }
+        }
+
+        if( $uBody.sCallStartTime.equals("000000") && $uBody.charge_per_message == 100 && $uBody.message_rate == 1 && $uBody.sCallTermTime.equals("000000")) {
+            $uBody.sCountryCode = "999";
+        }
+
+        // CJH_CDR, DACOM_CDR
+        //if( $uBody.sCarrier == "747" || listFindIndex(LST_DACOM_CDR, i, i == $uBody.sCarrier) > -1 ) {
+        if( $uBody.sCarrier.equals("747") || $uBody.LST_DACOM_CDR.contains($uBody.sCarrier) ) {
+          
+            $uBody.bCJH_DACOM_CDR = true;
+        } else {
+            $uBody.bCJH_DACOM_CDR = false;
+        }
+        
+        // DRLINE_CDR
+        if( $uBody.sCarrier.equals("789") || $uBody.sCarrier.equals("380") ) {
+
+            $uBody.bDRLINE_CDR = true;
+
+        } else {
+            $uBody.bDRLINE_CDR = false;
+        }	
+    	
+end

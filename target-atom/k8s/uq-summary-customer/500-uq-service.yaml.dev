@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: uq-summary-customer
+  labels:
+    app: uq-summary-customer
+    version: 1.0.0
+    release: uq-summary-customer
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: uq-summary-customer

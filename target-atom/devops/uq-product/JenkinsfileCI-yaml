@@ -1,0 +1,200 @@
+def label = "uq_uq-product-${UUID.randomUUID().toString()}"
+def serviceAccount = "jenkins-uq"
+
+
+def notifyStarted() {
+    mattermostSend color: 'good', message: "STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+}
+
+def notifySuccessful(message) {
+    mattermostSend color: 'good', message: "SUCCEED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+def notifyFailed(message) {
+  mattermostSend color: 'danger', message: "FAILED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+String getBranchName(branch) {
+  branchTemp=sh returnStdout:true ,script:"""echo "$branch" |sed -E "s#origin/##g" """
+  if(branchTemp){
+    branchTemp=branchTemp.trim()
+  }
+  return branchTemp
+}
+
+String parsingBranchString(branch) {
+  branchTemp= sh returnStdout:true, script:"""echo ${branch}|sed -E "s/^release-//g"|sed -E "s/[0-9]+\\.[0-9]+\\.[0-9]+//g" """
+  if(branchTemp){
+    branchTemp = branchTemp.trim()
+					}
+  return branchTemp
+}
+podTemplate(label: label, serviceAccount: serviceAccount,
+//podTemplate(label: label, serviceAccount: serviceAccount, nodeSelector:"uq-node=true",
+	containers: [
+//		containerTemplate(name: 'jnlp', image: 'ktis-bastion01.container.ipc.kt.com:5000/jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}'),
+		containerTemplate(name: 'jnlp', image: 'ktis-bastion01.container.ipc.kt.com:5000/jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}',
+			resourceRequestCpu: "100m", resourceLimitCpu: "200m", resourceRequestMemory: "500Mi", resourceLimitMemory: "1000Mi"),
+		containerTemplate(name: 'maven', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/maven:3.3.9-jdk-8-alpine', ttyEnabled: true, command: 'cat', 
+			resourceRequestCpu: "400m", resourceLimitCpu: "1000m", resourceRequestMemory: "500Mi", resourceLimitMemory: "2000Mi"),
+		containerTemplate(name: 'docker', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/docker:stable', ttyEnabled: true, command: 'cat',
+			resourceRequestCpu: "10m", resourceLimitCpu: "100m", resourceRequestMemory: "100Mi", resourceLimitMemory: "300Mi"),
+		containerTemplate(name: 'oc', image: 'ktis-bastion01.container.ipc.kt.com:5000/openshift3/ose-cli:latest', command: 'cat', ttyEnabled: true,
+			resourceRequestCpu: "10m", resourceLimitCpu: "100m", resourceRequestMemory: "50Mi", resourceLimitMemory: "100Mi")
+	],
+	volumes: [
+//	    hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock')
+	    hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
+        persistentVolumeClaim(mountPath: '/home/jenkins', claimName: 'jenkins-slave-pvc', readOnly: false)
+	    ]
+	) {
+	
+	node(label) {
+		try {
+			def commitId		
+		  
+			def branchTemp
+			//branch Name Parsing
+			branchTemp = params.branchName
+
+			branch=getBranchName(branchTemp)
+			stage('Get Source') {
+				git url: "http://10.217.59.20/usage-query/usage-query.git",
+					credentialsId: 'git-credentials',
+					branch: "${branch}"
+					commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+			}
+			def props = readProperties  file:'devops/uq-product/pipelineCI-yaml.properties'
+			//def props = readProperties  file:'usage-query-service/devops/uq-product/pipelineCI-yaml.properties'
+			def tag = commitId
+			def gitSrc = props['gitSrc']
+			def dockerRegistry = props['dockerRegistry']
+			def image = props['image']
+			def deployment = props['deployment']
+			def service = props['service']
+			def selector = props['selector']
+			def namespace = props['namespace']
+			def appname = props['appname']
+			def deployenv = props['deployenv']
+			def mvnSettings = "${env.WORKSPACE}/devops/uq-product/settings.xml"
+						
+
+			//null check 
+			if(!dockerRegistry || !image || !mvnSettings){
+					throw new Exception("Value is null")
+			}
+			stage('Unit Test'){
+				if(params.unitTestEnable) {
+					container('maven') {
+					
+						//sh "mvn test --settings ${mvnSettings} --projects usage-query-service"
+						sh "mvn test --settings ${mvnSettings}"
+					}
+				}
+			}
+			
+			stage('maven build project') {
+				container('maven') {
+					
+					//sh "mvn clean install -DskipTests --settings ${mvnSettings} --projects usage-query-service"
+					sh "mvn clean install -DskipTests --settings ${mvnSettings}"
+				}
+			}
+
+            stage('Build Docker image') {			
+		        container('docker') {
+		  	        docker.withRegistry("${dockerRegistry}", 'cluster-registry-credentials') {
+	  	           		//sh "mvn clean package --settings ${mvnSettings} -DskipTests docker:build"
+ 						//sh "docker build -t ${image}:${tag} ."
+        				sh "docker build -t ${image}:${tag} . -f ./devops/uq-product/Dockerfile-dev"
+        				sh "docker push ${image}:${tag}"
+        				sh "docker tag ${image}:${tag} ${image}:latest"
+        				sh "docker push ${image}:latest"
+            	    }
+		        }
+	        }
+	        
+			stage( 'Deploy to Cluster' ) {
+				container('oc') {
+					dir("k8s/uq-product"){    
+
+						/* rolling update */
+
+						//replace with image
+						
+						// yaml-temp directory : temp directory for make temp yaml file
+						// 이전 yaml 삭제 
+						sh returnStatus: true, script:  "rm -rf yaml-temp"
+						sh returnStatus: true, script:  "mkdir yaml-temp"
+						
+						// istio 시스템 일 경우 수행
+						//sh returnStatus: true, script:  "rm -rf yaml-common-temp"
+						//sh returnStatus: true, script: "mkdir yaml-common-temp"
+						
+						// Router 일 경우 배포 제외 
+					    sh returnStatus: true, script: "rm 600*"
+					
+						//rename yaml.env
+						sh "rename yaml.${deployenv} yaml *${deployenv}"
+						sh "rename yml.${deployenv} yml *${deployenv}"
+
+						//move temp directory
+						// istio 시스템 일 경우 수행
+						//sh returnStatus: true, script: "mv 600*yaml yaml-common-temp"
+						//sh returnStatus: true, script: "mv 600*yml yaml-common-temp"
+		     
+						sh returnStatus: true, script: "mv *yaml yaml-temp"
+						sh returnStatus: true, script: "mv *yml yaml-temp"
+
+						// replace image image: -> image:tag
+						sh "sed -i 's#image:.*${namespace}/.*#image: ${image}:${tag}#g' ./yaml-temp/400*"
+		     
+						sh "echo '--------------------'"
+						// istio 시스템 일 경우 수행
+						//dir("yaml-common-temp"){
+						//	sh returnStatus: true, script: "cat ./*"
+						//	sh "oc -n istio-system apply -f ."
+						//}
+			
+						dir("yaml-temp"){
+							sh "cat ./*"
+							sh "oc -n ${namespace} apply -f ."
+							sh "oc -n ${namespace} rollout status deployment ${selector}"
+						}    
+					}
+				}
+			}
+			
+			stage('Jmeter Test'){
+				if(params.jmeterTestEnable) {
+					container('oc') {
+						dir("jmeter"){
+							def jmeterMaster = sh returnStdout: true, script: """kubectl get po -n devops|grep jmeter-master|awk '{print \$1}' """
+							jmeterMaster = jmeterMaster.trim()
+							echo jmeterMaster
+							
+							sh """ls *jmx > testfile.temp"""
+							
+							jmxfilelist = readFile "testfile.temp"
+							jmxfilelist.split('\n').each {
+							    echo it
+							    sh """oc cp $it -n devops $jmeterMaster:."""
+							    sh """
+							        #execute test
+							        oc exec -it -n devops ${jmeterMaster} -- /bin/bash /load_test ${it}
+							    """
+							}
+						}
+					}
+				}        
+			}
+										
+			//notifySuccessful()
+		} catch(e) {
+			buildMessage="**Error :: "+ e.toString()+"**"
+			
+			currentBuild.result = "FAILED"
+			//notifyFailed(buildMessage)
+		}
+	}
+}

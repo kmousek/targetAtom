@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:camel="http://camel.apache.org/schema/spring"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd    http://www.springframework.org/schema/tx   http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+	<tx:annotation-driven
+		transaction-manager="transactionManager" />
+	<bean class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close" id="dataSource">
+		<property name="driverClassName"
+			value="${spring.datasource.driver-class-name}" />
+		<property name="url" value="${spring.datasource.url}" />
+		<property name="username"
+			value="${spring.datasource.username}" />
+		<property name="password"
+			value="${spring.datasource.password}" />
+		<property name="initialSize" value="3" />
+		<property name="maxActive" value="5" />
+		<property name="maxIdle" value="5" />
+		<property name="minIdle" value="0" />
+		<property name="maxWait" value="-1" />
+	</bean>
+	<bean
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager"
+		id="transactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	<!-- <bean class="com.ktds.targetatom.service.CollSendBaseBean" id="pathFinder"/> -->
+	<bean class="com.ktds.targetatom.processor.CollDirPathProcess"
+		id="filePathProcessor" />
+	<bean class="com.ktds.targetatom.service.CollAditHstService"
+		id="cretAditHst" />
+	<bean
+		class="org.apache.activemq.camel.component.ActiveMQComponent" id="jms">
+		<property name="brokerURL" value="${activemq.brokerURL}" />
+		<property name="username" value="${activemq.username}" />
+		<property name="password" value="${activemq.password}" />
+		<property name="deliveryPersistent" value="true" />
+	</bean>
+
+	<bean id="rabbitConnectionFactory"
+		class="com.rabbitmq.client.ConnectionFactory">
+		<property name="host" value="${rabbitmq.hostName}" />
+		<property name="port" value="${rabbitmq.port}" />
+		<property name="username" value="${rabbitmq.username}" />
+		<property name="password" value="${rabbitmq.password}" />
+	</bean>
+
+	<bean class="com.ktds.targetatom.file.DeleteDirectory" id="DelDirectory" />
+
+	<!-- <bean class="org.apache.commons.configuration.PropertiesConfiguration" 
+		id="runtimeProperties"> <constructor-arg type="java.lang.String" value="config.properties"/> 
+		<property name="reloadingStrategy" ref="reloadingStrategy"/> </bean> <bean 
+		class="org.apache.commons.configuration.reloading.FileChangedReloadingStrategy" 
+		id="reloadingStrategy"/> -->
+</beans>

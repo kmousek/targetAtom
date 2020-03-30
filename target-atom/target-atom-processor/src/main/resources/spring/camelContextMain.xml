@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:camel="http://camel.apache.org/schema/spring"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="      http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd              http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd      http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+    <context:property-placeholder location="classpath:*.properties"/>
+    <import resource="classpath:spring/bean/bean-define.xml"/>
+    <camelContext autoStartup="true"
+        id="camelContext-Mediation-Processor" trace="true" xmlns="http://camel.apache.org/schema/spring">
+        <properties>
+            <property key="CamelLogDebugBodyMaxChars" value="40000"/>
+        </properties>
+        <propertyPlaceholder id="propertylist" location="classpath:camel-properties.properties,classpath:application.properties"/>
+        <threadPoolProfile defaultProfile="true"
+            id="outThreadPoolProfile" maxPoolSize="100"
+            maxQueueSize="1000" poolSize="100" rejectedPolicy="CallerRuns"/>
+    </camelContext>
+</beans>

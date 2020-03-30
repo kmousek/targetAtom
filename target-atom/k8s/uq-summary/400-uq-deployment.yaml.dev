@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uq-summary
+  labels:
+    app: uq-summary
+    version: 1.0.0
+    release: uq-summary
+spec:
+  selector:
+    matchLabels:
+      app: uq-summary
+      version: 1.0.0
+      release: uq-summary
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: uq-summary
+        version: 1.0.0
+        release: uq-summary
+    spec:
+      containers:
+      - name: uq-summary
+        image: docker-registry.default.svc.cluster.local:5000/uq/uq-summary:latest
+        imagePullPolicy: "Always"
+        ports:
+         - containerPort: 8080
+        env:
+         - name: NODE_IP
+           valueFrom:
+             fieldRef:
+               fieldPath: status.hostIP
+        envFrom:
+        - configMapRef:
+            name: uq-summary
+        volumeMounts:
+        - mountPath: /tc_log/
+          name: logs-volume
+        securityContext:
+          privileged: true
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+              path: /actuator/health
+              port: 8080
+              scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /actuator/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1250Mi       
+          limits:
+            cpu: 2000m
+            memory: 3000Mi
+      nodeSelector:
+        uq-node: "true"
+      volumes:
+      - name: logs-volume
+        hostPath:
+          # directory location on host
+          path: /var/log/uq/tomcat/
+          # this field is optional
+          type: DirectoryOrCreate
+

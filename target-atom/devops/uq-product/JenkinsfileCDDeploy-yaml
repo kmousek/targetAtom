@@ -1,0 +1,174 @@
+def label = "uq_uq-product-${UUID.randomUUID().toString()}"
+def serviceAccount = "jenkins-uq"
+def serviceName = "uq-product"
+
+def notifyStarted() {
+    mattermostSend color: 'good', message: "STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+}
+
+def notifySuccessful(message) {
+    mattermostSend color: 'good', message: "SUCCEED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+def notifyFailed(message) {
+  mattermostSend color: 'danger', message: "FAILED: Job [${env.JOB_NAME}${env.BUILD_DISPLAY_NAME}](${env.BUILD_URL})\n${message}"
+}
+
+String getBranchName(branch) {
+  branchTemp=sh returnStdout:true ,script:"""echo "$branch" |sed -E "s#origin/##g" """
+  if(branchTemp){
+    branchTemp=branchTemp.trim()
+  }
+  return branchTemp
+}
+
+String parsingBranchString(branch) {
+  branchTemp= sh returnStdout:true, script:"""echo ${branch}|sed -E "s/^release-//g"|sed -E "s/[0-9]+\\.[0-9]+\\.[0-9]+//g" """
+  if(branchTemp){
+    branchTemp = branchTemp.trim()
+					}
+  return branchTemp
+}
+
+podTemplate(label: label, serviceAccount: serviceAccount,
+	containers: [
+		containerTemplate(name: 'curl-jq', image: 'ktis-bastion01.container.ipc.kt.com:5000/admin/alpine-curl-jq-millet:1.0', command: 'cat', ttyEnabled: true,
+			resourceRequestCpu: "10m", resourceLimitCpu: "10m", resourceRequestMemory: "10Mi",  resourceLimitMemory: "10Mi"),
+		containerTemplate(name: 'oc', image: 'ktis-bastion01.container.ipc.kt.com:5000/openshift3/ose-cli:latest', command: 'cat', ttyEnabled: true,
+			resourceRequestCpu: "10m", resourceLimitCpu: "100m", resourceRequestMemory: "50Mi", resourceLimitMemory: "100Mi"),
+		containerTemplate(name: 'jnlp', image: 'ktis-bastion01.container.ipc.kt.com:5000/jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}',
+			resourceRequestCpu: "100m", resourceLimitCpu: "200m", resourceRequestMemory: "500Mi", resourceLimitMemory: "1000Mi")
+	],
+	volumes: [
+	    hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
+        persistentVolumeClaim(mountPath: '/home/jenkins', claimName: 'jenkins-slave-pvc', readOnly: false)
+	    ]
+	) {
+	
+	node(label) {
+		try {
+			//notifyStarted()
+
+			def autoCancelled = false
+
+			def branchTemp
+			//branch Name Parsing
+			branchTemp = params.branchName
+
+			branchName=getBranchName(branchTemp)
+			
+			def milestone
+			milestone=params.version
+			  
+			//null check 
+			if(!branchName || !milestone){
+				throw new Exception("Value is null")
+			}
+			
+			stage('Get Source') {
+				buildMessage = "${env.STAGE_NAME}\n"
+				buildStart= sh returnStdout: true, script: 'date'
+				
+				git url: "http://10.217.59.20/usage-query/usage-query.git",
+					credentialsId: 'git-credentials',
+					branch: "${branchName}"
+			}
+			
+			def props = readProperties  file:'devops/' + serviceName + '/pipelineCDDeploy-yaml.properties'
+			
+			def namespace = props['namespace']
+			def image = props['image']
+			def selector = props['selector']
+			def gitProjectUrl = props['gitProjectUrl']
+			def deployenv = props['deployenv']
+			def istioEnable = props['istioEnable']
+			
+			//null check 
+			if(!image || !selector || !gitProjectUrl || !deployenv ){
+				throw new Exception("Value is null")
+			}
+			
+			stage('Check Milestone'){
+				container('curl-jq'){
+					withCredentials([string(credentialsId: 'gitlab-secret-token', variable: 'TOKEN')]){		
+						
+						result = sh returnStdout:true, script: """curl --header PRIVATE-TOKEN:$TOKEN ${gitProjectUrl}/milestones?state=active | jq -r '.[].title' | grep ${milestone} | wc -l"""
+						result = result.toInteger()
+						
+						if ( result == 0 ){
+						   autoCancelled = true
+						   error('Error MileStone(version) is not opend')
+						}
+					}
+				}
+			}
+
+	  
+	
+			stage( 'Deploy to Cluster' ) {
+				container('oc') {
+					dir("k8s/" + serviceName){
+						/* rolling update */
+						//replace with image
+						// 이전 yaml 삭제 
+						sh returnStatus: true, script: "rm -rf yaml-temp"
+						
+						// yaml-temp directory : temp directory for make temp yaml file
+						sh returnStatus: true, script: "mkdir yaml-temp"
+						
+						// istio 시스템 일 경우 수행
+						if ( istioEnable.equalsIgnoreCase("true") )
+						{
+							sh returnStatus: true, script: "rm -rf yaml-common-temp"
+							sh returnStatus: true, script: "mkdir yaml-common-temp"
+						}
+						
+						//rename yaml.env
+						sh "rename yaml.${deployenv} yaml *${deployenv}"
+						sh "rename yml.${deployenv} yml *${deployenv}"
+						
+						// Router 일 경우 배포 제외 
+						sh returnStatus: true, script: "rm 600*"
+						
+						// istio 시스템 일 경우 수행
+						if ( istioEnable.equalsIgnoreCase("true") )
+						{
+							//move temp directory		
+							sh returnStatus: true, script: "mv 600*yaml yaml-common-temp"
+							sh returnStatus: true, script: "mv 600*yml yaml-common-temp"
+						}
+						 
+						sh returnStatus: true, script: "mv *yaml yaml-temp"
+						sh returnStatus: true, script: "mv *yml yaml-temp"
+
+						// replace image image: -> image:tag
+						sh "sed -i 's#image:.*${namespace}/.*#image: ${image}:${milestone}#g' ./yaml-temp/400*" 
+						sh "echo '--------------------'"
+
+						// istio 시스템 일 경우 수행
+						if ( istioEnable.equalsIgnoreCase("true") )
+						{
+							dir("yaml-common-temp"){
+								sh returnStatus: true, script:"cat ./*"
+								sh returnStatus: true, script: "oc -n istio-system apply -f ."
+							}
+						}
+
+						 dir("yaml-temp"){
+							sh returnStatus: true, script:"cat ./*"
+							sh returnStatus: true, script: "oc -n ${namespace} apply -f ."
+							sh "oc -n ${namespace} rollout status deployment ${selector}"
+						}
+					}
+				}
+			}		
+		//notifySuccessful()
+		} catch(e) {
+			buildMessage="**Error :: "+ e.toString()+"**"
+			print "this build cause error:" + buildMessage
+			
+			currentBuild.result = "FAILED"
+			//notifyFailed(buildMessage)
+		}
+	}
+}

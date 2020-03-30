@@ -1,0 +1,61 @@
+<?xml version='1.0'?>
+<!DOCTYPE PZMAP SYSTEM "flatpack.dtd" >
+
+<PZMAP>
+    <COLUMN name="cdr_version" length="4" />
+    <COLUMN name="cdr_type" length="1" />
+    <COLUMN name="charging_number" length="11" />
+    <COLUMN name="imsi" length="15" />
+    <COLUMN name="subscriber_ip_address" length="15" />
+    <COLUMN name="wstype" length="3" />
+    <COLUMN name="win_service_name" length="4" />
+    <COLUMN name="apn" length="100" />
+    <COLUMN name="accounting_status_type" length="1" />
+    <COLUMN name="called_asserted_identity" length="15" />
+    <COLUMN name="calling_asserted_identity" length="15" />
+    <COLUMN name="gpp_pdp_type" length="1" />
+    <COLUMN name="gpp_nasapi" length="4" />
+    <COLUMN name="gpp_charging_characteristic" length="4" />
+    <COLUMN name="sgsn_mcc_mnc" length="6" />
+    <COLUMN name="gpp_gprs_negotiated_qos_profile" length="31" />
+    <COLUMN name="gpp_charging_id" length="10" />
+    <COLUMN name="ims_charging_identifier" length="80" />
+    <COLUMN name="originating_inter_operator_identifier" length="8" />
+    <COLUMN name="terminating_inter_operator_identifier" length="8" />
+    <COLUMN name="service_start_3gpp_user_location_info" length="16" />
+    <COLUMN name="service_terminating_3gpp_user_location_info" length="16" />
+    <COLUMN name="nas_release_indicator" length="2" />
+    <COLUMN name="application_release_indicator" length="4" />
+    <COLUMN name="number_portablility_routing_information" length="28" />
+    <COLUMN name="subscriber_ipv6_address" length="40" />
+    <COLUMN name="service_category_id" length="3" />
+    <COLUMN name="service_charging_type" length="3" />
+    <COLUMN name="service_charging_rate" length="3" />
+    <COLUMN name="service_call_type" length="1" />
+    <COLUMN name="service_calling_information" length="30" />
+    <COLUMN name="service_called_information" length="30" />
+    <COLUMN name="service_start_date" length="8" />
+    <COLUMN name="service_start_time" length="6" />
+    <COLUMN name="service_end_date" length="8" />
+    <COLUMN name="service_end_time" length="6" />
+    <COLUMN name="service_upload_data_octects" length="16" />
+    <COLUMN name="service_download_data_octects" length="16" />
+    <COLUMN name="service_contents_count" length="4" />
+    <COLUMN name="service_contents_type" length="2" />
+    <COLUMN name="service_time_duration" length="8" />
+    <COLUMN name="service_prepaid_airtime_charge" length="10" />
+    <COLUMN name="service_prepaid_packet_charge" length="10" />
+    <COLUMN name="service_prepaid_count_charge" length="10" />
+    <COLUMN name="service_prepaid_information_charge" length="10" />
+    <COLUMN name="service_3gpp_gprs_negotiated_qos_profile" length="31" />
+    <COLUMN name="supplementary_services_code_1" length="3" />
+    <COLUMN name="supplementary_services_code_2" length="1" />
+    <COLUMN name="hd_call" length="1" />
+    <COLUMN name="routing_number" length="11" />
+    <COLUMN name="sdp_codec_information" length="31" />
+    <COLUMN name="request_timestamp" length="14" />
+    <COLUMN name="reason_header" length="44" />
+    <COLUMN name="origin_host" length="32" />
+    <COLUMN name="reserved" length="5" />
+    <COLUMN name="record_type" length="1"/>
+</PZMAP>

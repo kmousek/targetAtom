@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: target-atom-jdbc
+Bundle-SymbolicName: target-atom-jdbc
+Bundle-Version: 1.0.0.qualifier
+Export-Package: com.ktds.targetatom.dao.test,
+ com.ktds.targetatom.dao,
+ com.ktds.targetatom.dao.old,
+ com.ktds.targetatom.db,
+ com.ktds.targetatom.db.audit,
+ com.ktds.targetatom.db.reference,
+ com.ktds.targetatom.rowmapper,
+ com.ktds.targetatom.service,
+ com.ktds.targetatom.vo

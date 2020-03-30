@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+	<mirrors>
+		<mirror>
+			<id>public</id>
+			<mirrorOf>*</mirrorOf>
+			<url>http://10.217.59.89/nexus/content/groups/public</url>
+		</mirror>
+	</mirrors>
+	<localRepository>/home/jenkins/.m2/repository</localRepository>
+</settings>

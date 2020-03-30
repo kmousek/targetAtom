@@ -1,0 +1,58 @@
+//created on: 2019. 6. 11.
+package drools.rules.kr;
+
+//list any import classes here.
+import com.ktds.targetatom.cdr.kr.KRBody;
+import com.ktds.targetatom.cdr.kr.KRErrorCdr;
+import com.ktds.targetatom.cdr.kr.KRResultCdr;
+import com.ktds.targetatom.bean.AuditHandler;
+
+global AuditHandler audit;
+
+//declare any global variables here
+
+rule "KR.Error for billing code" 
+	dialect "mvel"
+	salience 20
+    when
+		bCode : KRBody( sBillingCd != "8072" )
+    then
+    	bCode.setsFlag(false);
+end
+
+rule "KR.Error for Charing time > Valid Time"
+    dialect "mvel"
+    salience 15
+    when
+    	dt : KRBody( (sChrgDateTime.after(sValidDateTime) ))
+    then
+        dt.setsFlag(false);
+end
+
+rule "KR.Error for service type"
+    //include attributes such as "salience" here...
+    salience 10
+    when
+    	sType : KRBody( sServiceType != "2" )
+    then
+        sType.setsFlag(false);
+end
+
+rule "Result Format Setting"
+    //include attributes such as "salience" here...
+    salience 5
+    when
+    	$errorRecord : KRBody( sFlag == false )
+    then
+    	KRErrorCdr result = new KRErrorCdr($errorRecord);
+    	insert(result);
+end
+
+rule "Result Success Format Setting"
+    salience 0
+    when
+    	$successRecord : KRBody( sFlag == true )
+    then
+    	KRResultCdr result = new KRResultCdr($successRecord);
+    	insert(result);
+end

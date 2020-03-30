@@ -1,0 +1,19 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: uq-product
+    version: 1.0.0
+    release: uq-product
+  name: uq-product
+spec:
+  host: api.uq.kt.com
+  path: /uq-product
+  port:
+    targetPort: http
+  to:
+    kind: Service
+    name: uq-product
+    weight: 100
+  wildcardPolicy: None
+

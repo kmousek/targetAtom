@@ -1,0 +1,174 @@
+import java.util.ArrayList;
+
+import com.ktds.targetatom.vo.TbProfBasInfo;
+import com.ktds.targetatom.vo.TbErrMappgBasInfo;
+import com.ktds.targetatom.vo.TbErrMappgBasInfoKey;
+
+import com.ktds.targetatom.cdr.volte.VoLTEBody;
+import com.ktds.targetatom.cdr.volte.VoLTEErrorCdr;
+import com.ktds.targetatom.cdr.volte.VoLTEResultCdr;
+
+import com.ktds.targetatom.util.CommonUtils;
+
+//declare any global variables here
+
+rule "VoLTE Validate Rule"
+dialect "mvel"
+salience 30
+	when
+		$uBody : VoLTEBody()
+    	eval(true)
+    then
+    	ArrayList ltErrorCd = new ArrayList();
+    	
+    	TbProfBasInfo cdrProfReferenceInfo = audit.get_TB_PROF_BAS($uBody.imsi);
+    	
+    	//		 uBody.sErrCd          = "0001"; // CDR_ERR_ID
+		//		 uBody.sErrLevelDivCd  = "10";      // MZ_ERR_LEVEL_DIV_CD
+		//		 uBody.iErrPriority    = "1000";     // MZ_ERR_PRIRT_NO
+		//		 uBody.sOldErrCd	   = "IMSI";
+	     
+    	if ( cdrProfReferenceInfo != null ) {
+    		TbErrMappgBasInfoKey uErrCdOut = new TbErrMappgBasInfoKey("0001", "10", 1, "IMSI");  		
+    		ltErrorCd.add(uErrCdOut);
+    	}
+    	
+    	if ($uBody.iUseTime > 0) {
+    		if ($uBody.iUseTime <= 3)
+    			$uBody.bIsDURATION_3SEC_CHECK = true;
+    		if ($uBody.iUseTime <= 5)
+    			$uBody.bIsDURATION_5SEC_CHECK = true;
+    		if ($uBody.iUseTime <= 10)
+    			$uBody.bIsDURATION_10SEC_CHECK = true;
+    	}
+    	
+    	if ($uBody.sChrgCallYn.equals("Y") && (($uBody.sCalledArea.equals("") || $uBody.sCalledArea == null) || $uBody.sSettlFeatureCd.equals("SP"))) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_called_information_4");
+	 	}
+	 	
+	 	if (($uBody.sTermCode.equals("CDF_NORM_V")) && (!($uBody.bIsINTERNATIONAL)) 
+	 		&& ($uBody.sCalledSvcNo.length() < 9) && ($uBody.sSpIndi.equals("N")) 
+	 		&& !($uBody.sSscode.equals("SSCODE_FREE_ZONE") && $uBody.bIsPREFIX_FREEZONE)) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_called_information_5");
+		}
+		
+		if (!($uBody.bIsINTERNATIONAL) && ($uBody.sChrgOtherNo != null && $uBody.sChrgOtherNo.startsWith("0")) &&
+			($uBody.sCalledArea != null && !($uBody.sCalledArea).equals("")) && ($uBody.sSpIndi.equals("N"))) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_called_information_6");
+		}
+		
+		if (!$uBody.bIsINTERNATIONAL && ($uBody.sChrgOtherNo != null && $uBody.sChrgOtherNo.startsWith("1")) &&
+			($uBody.sCalledArea != null && !$uBody.sCalledArea.equals("")) && !($uBody.sCalledSvcNo.startsWith("011")) &&
+			($uBody.sSpIndi.equals("N"))) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_called_information_7");
+		}
+		
+		TbCalNoBasInfo tbCalNoBas = audit.get_TB_CAL_NO_BAS (CommonUtils.comnSubstring($uBody.sChrgSvcNo, 0, 3), CommonUtils.comnSubstring($uBody.sChrgSvcNo, 3, 7), CommonUtils.comnSubstring($uBody.sChrgSvcNo, 7, 11), $uBody.sCallStartDateTime);
+		String sCallingDropIndi = "";
+
+		if (tbCalNoBas != null) {
+			sCallingDropIndi = tbCalNoBas.sCallingDropIndi;
+		}
+
+		if (($uBody.sCallingDropIndi.equals("Y")) && (sCallingDropIndi.equals("Y"))) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_charging_number_3");
+		}
+		
+		// Rule : category_id -----> DROP : ERROR_CODE = 6078
+		// Service Category Id : <DRP> Undefined Category Id
+		// NOT(VOLTE_4G_CALL OR PSVT_4G_CALL OR PSVT_3G_CALL OR VS_4G_CALL OR
+		// VS_3G_CALL OR IM_4G OR IM_3G)
+
+		if (!($uBody.bIsVOLTE_4G_CALL || $uBody.bIsPSVT_4G_CALL || $uBody.bIsPSVT_3G_CALL ||
+			$uBody.bIsVS_4G_CALL || $uBody.bIsVS_3G_CALL || $uBody.bIsIM_4G || $uBody.bIsIM_3G)) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_category_id_3");
+		}
+
+		// Rule : cause_for_termination_unsuccess -----> DROP : ERROR_CODE = 6021
+		// uRule.CDF_UNSUCCESS_V == "1"
+	
+		if ($uBody.sTermCode.equals("CDF_UNSUCCESS_V")) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_application_release_indicator_4");
+		}
+		
+		// Rule : duration_com_kor_3 ----> DROP : ERROR_CODE = 6073
+		
+		//***************************************************************************
+	    //* (NOT(VOLTE.INTERNATIONAL)) AND (VOLTE.DURATION_3SEC_CHECK) AND
+	    //* NOT(VOLTE.WIN_CHARGED) AND NOT(VOLTE.KT114) AND (VOLTE.TIME_CDR_ALL) **
+	    //**************************************************************************/
+
+		if (!$uBody.bIsINTERNATIONAL && $uBody.bIsDURATION_3SEC_CHECK && 
+			(!($uBody.bIsWIN_CHARGED)) && (!($uBody.sProdCd.equals("KT114"))) && ($uBody.bIsTIME_CDR || $uBody.bIsTIME_CDR_001) ) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_end_time_5");
+		}
+	
+		// Rule : sscode_242_drop ----> DROP : ERROR_CODE = 6111
+	
+		if (($uBody.bIsVOLTE_4G_CALL) && ($uBody.sSscode.equals("242"))) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_supplementary_services_code_6");
+		}
+		
+		//if (comnSubstring($uBody.service_called_information,0,7) == "1593409") {
+		if (CommonUtils.comnSubstring($uBody.service_called_information,0,7).equals("1593409")) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_called_information_8");
+		}
+
+		//if($uBody.sSscode == "231"){
+		if($uBody.sSscode.equals("231")){
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_supplementary_services_code_8");
+		}
+
+		//int iServiceTimeDuration;
+		//strToInt(iServiceTimeDuration, $uBody.service_time_duration);
+		int iServiceTimeDuration = Integer.parseInt($uBody.service_time_duration);
+	
+		if (iServiceTimeDuration <= 0) {
+			ltErrorCd = audit.listAdd(ltErrorCd, "u_service_time_duration_zero_1");
+		}
+		
+		String sErrLevelDivCd = "";
+		if ( ltErrorCd.size() != 0 ) {
+			ltErrorCd = audit.sort(ltErrorCd);
+			TbErrMappgBasInfoKey tempErrorCd = ltErrorCd.get(0);
+			sErrLevelDivCd = tempErrorCd.sErrLevelDivCd;
+		}
+		
+		if (($uBody.bIsWIN_CHARGEABLE) && ($uBody.sCallingDropIndi.equals("N"))) {
+	    	if (sErrLevelDivCd.equals("20")) {
+	    		$uBody.sSettDropInd = "Y";
+	    		$uBody.sSettDropTeen = "Y";
+	        }
+	    }
+	    
+	    //System.out.println("sErrLevelDivCd :: " + sErrLevelDivCd);
+	    if (sErrLevelDivCd != null && (sErrLevelDivCd.equals("10") || sErrLevelDivCd.equals("20") || sErrLevelDivCd.equals("30"))) {
+	    	String[] ltErrCd = new String[5];
+	    	
+	    	for (int i=0; i < 5; i++) {
+	    	     if (i == 1) {
+	    	     	TbErrMappgBasInfoKey tempErrorCd = ltErrorCd.get(0);
+	    	        ltErrCd[0] = new String(tempErrorCd.sErrCd);
+	    	     } else {
+	    	        ltErrCd[i] = new String("");
+	    	     }
+	    	}
+	    	
+	    	$uBody.sMzErrorCd01 = ltErrCd[0];
+	        $uBody.sMzErrorCd02 = ltErrCd[1];
+	        $uBody.sMzErrorCd03 = ltErrCd[2];
+	        $uBody.sMzErrorCd04 = ltErrCd[3];
+	        $uBody.sMzErrorCd05 = ltErrCd[4];
+	    }
+	    
+	    if ( ltErrorCd.size() != 0 ) {
+			VoLTEErrorCdr errorResult = new VoLTEErrorCdr($uBody);
+			insert(errorResult);
+		} else {
+			VoLTEResultCdr correctResult = new VoLTEResultCdr($uBody);
+			insert(correctResult);
+		}
+		
+		//update(errorResult);
+		//update(correctResult);
+end

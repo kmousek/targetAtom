@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes id="RabbitMqRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="VoLTE_RabbitMQRouter">
+<!--         <from id="QueueInput" uri="jms:queue:{{processor.instance.id}}?concurrentConsumers={{message.concurrent.consumer}}&amp;maxConcurrentConsumers={{message.max.concurrent.consumer}}&amp;destination.consumer.prefetchSize={{consumer.prefetch.size}}"/> -->
+<!-- 		<from id="QueueInput" uri="rabbitmq:collExchange?queue=C1_VOVLTE_D&amp;routingKey=C1_VOVLTE_D&amp;skipQueueDeclare=true" />  ok -->
+<!-- 		<from id="QueueInput" uri="rabbitmq:collExchange?queue=C1_VOVLTE_D&amp;routingKey=C1_VOVLTE_D" /> ok  -->
+		<from id="QueueInput" uri="rabbitmq:collExchange?queue=C1_VOVLTE_D" />
+<!-- 		<from id="QueueInput" uri="rabbitmq:collExchange?routingKey=C1_VOVLTE_D" /> no  -->
+<!-- 		<from id="QueueInput" uri="rabbitmq:collExchange" /> no--> 
+        <log id="_logStart" loggingLevel="WARN" message="Route start Time"/>
+<!--         <toD id="_toPRC1" uri="file:/WRK/PRC/?fileName=${file:name}"/> -->
+        <bean id="TargetDirectoryCheck" method="setTargetDirectory" ref="auditHandler"/>
+        <transform id="_transform1">
+            <method method="setRecordStructure" ref="voLTETransformer"/>
+        </transform>
+        <log id="_StartFileParsing" loggingLevel="WARN" message="Start File Parsing"/>
+        <unmarshal id="FileParsing">
+            <bindy classType="com.ktds.targetatom.cdr.volte.VoLTEBody" locale="korea" type="Fixed"/>
+        </unmarshal>
+        
+        <log id="_UnMarshalLog" loggingLevel="WARN" message=">>>>>> UnMarshal Time"/>
+        <bean id="_validateParsing" method="droolsExecution" ref="droolsExecutor"/>
+        <multicast id="_FileDistributor" parallelProcessing="false">
+            <toD id="_ProcessNRat" uri="direct:NRAT"/>
+            <toD id="_ProcessDrop" uri="direct:DROP"/>
+        </multicast>
+<!--         <toD id="_Processing" uri="direct:Parsing"/> -->
+    </route>
+<!--     <route id="DistributeFile"> -->
+<!--         <from id="FromAmq" uri="direct:Parsing"/> -->
+<!--         <log id="_log20" loggingLevel="WARN" message="DistributeFile route processing"/> -->
+<!--         <to id="_validateParsing" uri="language:javascript:classpath:spring/rules/volte/volte.js"/> -->
+<!-- 		<bean id="_validateParsing" method="droolsExecution" ref="droolsExecutor"/> -->
+<!--         <multicast id="_FileDistributor" parallelProcessing="true"> -->
+<!--             <toD id="_ProcessNRat" uri="direct:NRAT"/> -->
+<!--             <toD id="_ProcessDrop" uri="direct:DROP"/> -->
+<!--         </multicast> -->
+<!--         <log id="_logParsing" loggingLevel="WARN" message="Parsing finished Time"/> -->
+<!--     </route> -->
+    <route id="Process_NRat">
+        <from id="InputFileRat" uri="direct:NRAT"/>
+        <log id="_log22" loggingLevel="WARN" message="NRat route processing"/>
+        <marshal id="_TransformNRat">
+            <bindy classType="com.ktds.targetatom.cdr.volte.VoLTEBody"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <multicast id="RatFileHandler" parallelProcessing="true">
+            <toD id="InsertQueue" uri="rabbitmq:{{message.send.queue.id}}?queue=processorQueue"/>
+            <toD id="AsyncAuditInsert" uri="direct:AsyncAuditInsert"/>
+        </multicast>
+<!--         <log id="_logNRat" loggingLevel="WARN" message="Rat finished Time : ${date:now:yyyy-MM-dd HH:mm:ss:SSS}"/> -->
+    </route>
+    <route id="Process_DropFile">
+        <from id="_InputDropFile" uri="direct:DROP"/>
+        <log id="_log25" loggingLevel="WARN" message="Drop route processing"/>
+        <marshal id="_TransformDrop">
+            <bindy classType="com.ktds.targetatom.cdr.volte.VoLTEErrorCdr"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <recipientList id="_MoveToDrop">
+            <simple>file:/home/WRK/ARCH/${date:now:yyyyMMdd}/VOVLTE/${header.targetNeId}/PRC/DRP</simple>
+        </recipientList>
+        <log id="_logDrop" loggingLevel="WARN" message="Drop finished Time"/>
+    </route>
+    <route id="AsyncInsertAuditRoute">
+        <from id="InsertAudit" uri="direct:AsyncAuditInsert"/>
+        <toD id="AsyncUpdateAudit" uri="direct:AsyncAudit"/>
+        <bean id="_InsertAudit"
+            method="insertAudit(*, 'MZN', ${header.CamelFileName}, 'RD', 'PRC_VOLTE', ${header.file.total.count}, ${header.file.error.count}, ${header.file.success.count})" ref="auditHandler"/>
+        <bean id="_UpdateAuditStatus"
+            method="updateStatusAudit(*, 'CO', 'MZN', 'PRC_VOLTE')" ref="auditHandler"/>
+    </route>
+    <route id="AsyncAuditRoute">
+        <from id="FromAudit" uri="direct:AsyncAudit"/>
+        <bean id="_UpdateAuditProcess"
+            method="updateAudit(*, 'IU', 'MZN', 'PRC_VOLTE', ${header.file.total.count}, '0', ${header.file.total.count})" ref="auditHandler"/>
+    </route>
+    
+    <route id="_toProcessorFile">
+    	<from id="_fromProcessorQueue" uri="rabbitmq:{{message.send.queue.id}}?queue=processorQueue"/>
+    	<toD uri="file:${header.toFilePath}?fileName=${header.CamelFileName}"/>
+    </route>
+    
+</routes>

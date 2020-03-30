@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes id="ActiveMqRoutes" xmlns="http://camel.apache.org/schema/spring">
+    <route id="INTKT_ActiveMqRouter">
+        <!-- <from id="QueueInput" uri="jms:queue:{{message.collect.queue.id}}?concurrentConsumers=10"/>-->
+        <from id="QueueInput" uri="jms:queue:{{processor.instance.id}}?concurrentConsumers={{message.concurrent.consumer}}&amp;maxConcurrentConsumers={{message.max.concurrent.consumer}}&amp;destination.consumer.prefetchSize={{consumer.prefetch.size}}"/>
+        <!-- <doTry id="_CheckException"> -->
+        <log id="_logStart" loggingLevel="WARN" message="Route start Time"/>
+        <!-- <convertBodyTo charset="ISO-8859-1" id="ConvertEncoding" type="java.lang.String"/> -->
+        <bean id="TargetDirectoryCheck" method="setTargetDirectory" ref="auditHandler"/>
+        <transform id="_transform1">
+            <method method="setRecordStructure" ref="intKTTransformer"/>
+        </transform>
+        <unmarshal id="FileParsing">
+            <bindy classType="com.ktds.targetatom.cdr.intkt.INTKTBody"
+                locale="korea" type="Fixed"/>
+        </unmarshal>
+        <toD id="_Processing" uri="direct:Parsing"/>
+        <!-- <doCatch id="_CatchException">
+                <exception>java.lang.IllegalArgumentException</exception>
+                <bean id="_NoBodyException1"
+                    method="updateStatusAudit(*, 'DRP', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+                <toD id="_MoveNoBodyFile" uri="file:${header.CamelFileParent}/Exception"/>
+            </doCatch>
+            <doCatch id="_CatchException">
+                <exception>java.lang.Exception</exception>
+                <bean id="_NoBodyException2"
+                    method="updateStatusAudit(*, 'ERR', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+                <convertBodyTo charset="ISO-8859-1" id="ConvertEncoding" type="java.lang.String"/>
+                <toD id="_MoveErrorFile" uri="file:${header.CamelFileParent}/ERR"/>
+            </doCatch>
+        </doTry> -->
+    </route>
+    <route id="DistributeFile">
+        <from id="FromAmq" uri="direct:Parsing"/>
+        <log id="_log20" loggingLevel="WARN" message="DistributeFile route processing"/>
+        <to id="_validateParsing" uri="language:javascript:classpath:spring/rules/volte/volte.js"/>
+        <multicast id="_FileDistributor" parallelProcessing="true">
+            <toD id="_ProcessNRat" uri="direct:NRAT"/>
+            <toD id="_ProcessDrop" uri="direct:DROP"/>
+        </multicast>
+        <log id="_logParsing" loggingLevel="WARN" message="Parsing finished Time"/>
+    </route>
+    <route id="Process_NRat">
+        <from id="InputFileRat" uri="direct:NRAT"/>
+        <log id="_log22" loggingLevel="WARN" message="NRat route processing"/>
+        <marshal id="_TransformNRat">
+            <bindy classType="com.ktds.targetatom.cdr.intkt.INTKTResultCdr"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <multicast id="RatFileHandler" parallelProcessing="true">
+            <!-- <recipientList id="_SendToDistributor">
+            <method
+                method="sendToDistributor(${header.file.targetDirectory}, ${file:onlyname.noext}_0_001.${file:ext})" ref="auditHandler"/>
+        	</recipientList> -->
+            <toD id="InsertQueue" uri="jms:queue:{{message.send.queue.id}}"/>
+            <toD id="AsyncAuditInsert" uri="direct:AsyncAuditInsert"/>
+        </multicast>
+        <log id="_logNRat" loggingLevel="WARN" message="Rat finished Time : ${date:now:yyyy-MM-dd HH:mm:ss:SSS}"/>
+    </route>
+    <route id="Process_DropFile">
+        <!-- <bean id="blankremove2" method="recordTrim(*, 'KRErrorFormat')" ref="fileParsingProcessor"/> -->
+        <from id="_InputDropFile" uri="direct:DROP"/>
+        <log id="_log25" loggingLevel="WARN" message="Drop route processing"/>
+        <marshal id="_TransformDrop">
+            <bindy classType="com.ktds.targetatom.cdr.intkt.INTKTErrorCdr"
+                locale="korea" type="Fixed"/>
+        </marshal>
+        <recipientList id="_MoveToDrop">
+            <simple>file:/home/WRK/ARCH/${date:now:yyyyMMdd}/INTKT/${header.targetNeId}/PRC/DRP</simple>
+        </recipientList>
+        <log id="_logDrop" loggingLevel="WARN" message="Drop finished Time"/>
+    </route>
+    <route id="AsyncInsertAuditRoute">
+        <from id="InsertAudit" uri="direct:AsyncAuditInsert"/>
+        <toD id="AsyncUpdateAudit" uri="direct:AsyncAudit"/>
+        <bean id="_InsertAudit"
+            method="insertAudit(*, 'MZN', ${header.CamelFileName}, 'RD', 'PRC_KR', ${header.file.total.count}, ${header.file.error.count}, ${header.file.success.count})" ref="auditHandler"/>
+        <bean id="_UpdateAuditStatus"
+            method="updateStatusAudit(*, 'CO', 'MZN', 'PRC_KR')" ref="auditHandler"/>
+    </route>
+    <route id="AsyncAuditRoute">
+        <from id="FromAudit" uri="direct:AsyncAudit"/>
+        <bean id="_UpdateAuditProcess"
+            method="updateAudit(*, 'IU', 'MZN', 'PRC_KR', ${header.file.total.count}, '0', ${header.file.total.count})" ref="auditHandler"/>
+    </route>
+</routes>

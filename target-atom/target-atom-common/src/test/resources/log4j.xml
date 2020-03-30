@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd" >
+<log4j:configuration>
+	<appender name="stdout" class="org.apache.log4j.ConsoleAppender">
+		<layout class="org.apache.log4j.PatternLayout">
+			<param name="ConversionPattern" value="%d{ISO8601} %-5p [%t] %c: %m%n" />
+		</layout>
+	</appender>
+	<logger name="org.slf4j" additivity="false">
+		<level value="TRACE" />
+		<appender-ref ref="stdout" />
+	</logger>
+	<logger name="org.apache.log4j" additivity="false">
+		<level value="TRACE" />
+		<appender-ref ref="stdout" />
+	</logger>
+	<logger name="org.apache.camel" additivity="false">
+		<level value="WARN" />
+		<appender-ref ref="stdout" />
+	</logger>
+	<logger name="org.apache.camel.component.file" additivity="false">
+		<level value="INFO" />
+		<appender-ref ref="stdout" />
+	</logger>
+	<logger name="com.ktds.targetatom" additivity="false">
+		<level value="TRACE" />
+		<appender-ref ref="stdout" />
+	</logger>
+	<root>
+		<priority value="INFO" />
+		<appender-ref ref="stdout" />
+	</root>
+</log4j:configuration>

@@ -1,0 +1,19 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: uq-summary-customer
+    version: 1.0.0
+    release: uq-summary-customer
+  name: uq-summary-customer
+spec:
+  host: api.uq.kt.com
+  path: /uq-summary-customer
+  port:
+    targetPort: http
+  to:
+    kind: Service
+    name: uq-summary-customer
+    weight: 100
+  wildcardPolicy: None
+

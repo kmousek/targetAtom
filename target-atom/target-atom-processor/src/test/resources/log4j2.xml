@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration monitorInterval="30" status="WARN">
+  <Properties>
+    <Property name="LOG_PATTERN">
+            [%d{yyyy-MM-dd HH:mm:ss.SSS}][%-10.-10t(%T)][%-5level][%c{1.}] %msg%n
+        </Property>
+  </Properties>
+  <Appenders>
+    <Console follow="true" name="ConsoleAppender" target="SYSTEM_OUT">
+      <PatternLayout pattern="${LOG_PATTERN}"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Logger additivity="false" level="TRACE" name="com.ktds.targetatom">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="INFO" name="org.apache.camel.component.file">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="TRACE" name="net.sf.flatpack">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="INFO" name="org.apache.camel">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="TRACE" name="org.springframework.jdbc.core.JdbcTemplate">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="TRACE" name="org.springframework.jdbc.core.StatementCreatorUtils">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="DEBUG" name="org.springframework.jdbc">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="INFO" name="org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Logger additivity="false" level="INFO" name="org.springframework.beans.factory.support.DefaultListableBeanFactory">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Logger>
+    <Root level="INFO">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Root>
+  </Loggers>
+</Configuration>
