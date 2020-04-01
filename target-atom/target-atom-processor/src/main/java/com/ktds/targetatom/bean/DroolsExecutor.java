@@ -45,6 +45,8 @@ public class DroolsExecutor {
 		// log.debug("KieSession ::: {}", sessionId);
 		ArrayList<?> bodyList = (ArrayList<?>) ex.getIn().getBody();
 		ArrayList resultList = new ArrayList();
+		
+		log.debug("bodyList ::: {}", bodyList);
 
 		if (!CollectionUtils.isEmpty(bodyList)) {
 
@@ -161,8 +163,11 @@ public class DroolsExecutor {
 		ArrayList<?> bodyList = (ArrayList<?>) ex.getIn().getBody();
 		ArrayList resultList = new ArrayList();
 
+		log.debug("Body size ::: {}", resultList.size());
+		
 		if (!CollectionUtils.isEmpty(bodyList)) {
 			for (Object body : bodyList) {
+				log.debug("body.getClass().getSimpleName() ::: {}", body.getClass().getSimpleName());
 				if (body.getClass().getSimpleName().equals(className))
 					resultList.add(body);
 			}

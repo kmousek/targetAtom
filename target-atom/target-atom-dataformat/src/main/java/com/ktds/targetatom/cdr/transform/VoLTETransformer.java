@@ -12,6 +12,11 @@ public class VoLTETransformer implements TransformRecord{
 	
 	public String setRecordStructure(String message) {
 		//System.out.println("message : [" + message + "]");
+		//String returnVal;
+		//returnVal = transformFixedLengthWithoutcrlf(message, 800, "UNIX");
+		//System.out.println("returnVal : [" + returnVal + "]");
+		
+		//return returnVal;
 		return transformFixedLengthWithoutcrlf(message, 800, "UNIX");
 	}
 
@@ -29,6 +34,7 @@ public class VoLTETransformer implements TransformRecord{
 		
 		for (i=0;i<message.length();i=i+recordLength) {
 			tmpChar = message.substring(i, i+recordLength) + tmpCrlf;
+			//System.out.println("tmpChar : [" + tmpChar + "]");
 			buff.append(tmpChar);
 		}
 		
