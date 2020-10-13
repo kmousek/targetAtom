@@ -27,7 +27,7 @@
 		<!-- Make sure to keep JAXB version up to date in parent/pom.xml in the 
 			bottom of the file -->
 		<jaxb-version>2.3.1</jaxb-version>
-		<junit-version>4.12</junit-version>
+		<junit-version>4.13.1</junit-version>
 		<log4j-version>2.11.1</log4j-version>
 		<commons-beanutils-version>1.9.3</commons-beanutils-version>
 	</properties>
