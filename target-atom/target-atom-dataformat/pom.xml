@@ -28,7 +28,7 @@
 			bottom of the file -->
 		<jaxb-version>2.3.1</jaxb-version>
 		<junit-version>4.12</junit-version>
-		<log4j-version>2.11.1</log4j-version>
+		<log4j-version>2.15.0</log4j-version>
 		<commons-beanutils-version>1.9.3</commons-beanutils-version>
 	</properties>
 	<dependencies>
