@@ -23,7 +23,7 @@
 		<commons-collections-version>3.2.2</commons-collections-version>
 		<camel-version>2.23.1</camel-version>
 		<dbcp-version>1.4</dbcp-version>
-		<postgresql-version>42.2.5</postgresql-version>
+		<postgresql-version>42.4.1</postgresql-version>
 		<groovy-version>2.5.7</groovy-version>
 		<groovy-eclipse-compiler-version>2.9.1-01</groovy-eclipse-compiler-version>
 		<groovy-eclipse-batch-version>2.5.7-01</groovy-eclipse-batch-version>
